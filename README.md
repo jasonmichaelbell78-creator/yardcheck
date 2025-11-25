@@ -152,6 +152,42 @@ A mobile-first Progressive Web App (PWA) for trucking yard inspections. Two insp
 
 ### Deployment
 
+#### Automated Deployment (Recommended)
+
+The app automatically deploys to Firebase Hosting when you push to the `main` branch via GitHub Actions.
+
+**Required GitHub Secrets:**
+
+Go to your repository Settings > Secrets and variables > Actions > New repository secret, and add:
+
+| Secret Name | Description |
+|------------|-------------|
+| `VITE_FIREBASE_API_KEY` | Firebase API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth domain (e.g., `yardcheck-543d0.firebaseapp.com`) |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID (e.g., `yardcheck-543d0`) |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket (e.g., `yardcheck-543d0.appspot.com`) |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID |
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase service account JSON (see below) |
+
+**To get the Firebase Service Account:**
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) > Your project > Project Settings > Service accounts
+2. Click "Generate new private key"
+3. Copy the entire JSON content
+4. Paste it as the value for `FIREBASE_SERVICE_ACCOUNT` secret
+
+**To seed inspectors:**
+
+1. Go to your repository's Actions tab
+2. Select "Seed Inspectors" workflow
+3. Click "Run workflow"
+4. Type "yes" to confirm and click "Run workflow"
+
+This will add the 4 initial inspectors (Matt Hale, Jason Bell, Alexis McElhaney, Derek Owen) to Firestore.
+
+#### Manual Deployment
+
 Deploy to Firebase Hosting:
 
 ```bash
