@@ -175,14 +175,16 @@ interface UseInProgressInspectionsResult {
 export function useInProgressInspections(): UseInProgressInspectionsResult {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [error, _setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = subscribeToInProgressInspections((data) => {
-      setInspections(data);
-      setLoading(false);
-    });
+    const unsubscribe = subscribeToInProgressInspections(
+      (data) => {
+        setInspections(data);
+        setLoading(false);
+        setError(null);
+      },
+    );
 
     return () => unsubscribe();
   }, []);
