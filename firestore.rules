@@ -1,15 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to validate inspection data on create
+    function isValidInspection() {
+      let data = request.resource.data;
+      return data.truckNumber is string
+        && data.truckNumber.size() > 0
+        && data.truckNumber.size() <= 50
+        // Truck number must be alphanumeric, dashes, or spaces (validated client-side with regex)
+        && data.truckNumber.matches('^[A-Z0-9\\-\\s]+$')
+        && data.status in ['in-progress', 'complete', 'gone']
+        && data.inspector1 is string
+        && data.inspector1.size() > 0;
+    }
+    
+    // Helper function to check if inspection is still editable
+    function isInProgressInspection() {
+      return resource.data.status == 'in-progress';
+    }
+    
+    // Helper function to check if status change is prevented
+    // Once completed/gone, status cannot be changed
+    function statusNotChanged() {
+      return request.resource.data.status == resource.data.status;
+    }
+    
     // Inspectors collection
+    // Note: Full authentication will be added in Phase 2
+    // Currently allows read for all users (needed for inspector selection)
+    // Write is restricted to prevent client-side modifications
     match /inspectors/{inspectorId} {
       allow read: if true;
-      allow write: if true; // Will tighten in Phase 2 with proper authentication
+      // Write operations should only be done via admin scripts or Firebase Console
+      // This prevents malicious client-side modifications
+      allow write: if false;
     }
     
     // Inspections collection
+    // Note: Full authentication will be added in Phase 2
     match /inspections/{inspectionId} {
-      allow read, write: if true; // Will tighten in Phase 2 with proper authentication
+      // Allow read for viewing inspections
+      allow read: if true;
+      // Allow create with validation
+      allow create: if isValidInspection();
+      // Allow updates with these conditions:
+      // 1. If inspection is still in-progress, allow any updates
+      // 2. If inspection is completed/gone, only allow updates that don't change status
+      allow update: if isInProgressInspection() || statusNotChanged();
+      // Prevent deletion from client - data integrity is important
+      allow delete: if false;
     }
   }
 }

@@ -44,10 +44,19 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
       return;
     }
 
-    const unsubscribe = subscribeToInspection(inspectionId, (data) => {
-      setInspection(data);
-      setLoading(false);
-    });
+    const unsubscribe = subscribeToInspection(
+      inspectionId,
+      (data) => {
+        setInspection(data);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('Subscription error:', err);
+        setError('Failed to load inspection');
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [inspectionId]);
@@ -184,6 +193,11 @@ export function useInProgressInspections(): UseInProgressInspectionsResult {
         setLoading(false);
         setError(null);
       },
+      (err) => {
+        console.error('Subscription error:', err);
+        setError('Failed to load inspections');
+        setLoading(false);
+      }
     );
 
     return () => unsubscribe();
