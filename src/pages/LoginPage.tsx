@@ -27,8 +27,7 @@ export function LoginPage() {
     const admin = adminInspectors.find(i => i.id === selectedAdminId);
     if (admin) {
       setCurrentInspector(admin);
-      // Dashboard would be implemented in Phase 2
-      alert('Dashboard coming in Phase 2');
+      navigate('/admin');
     }
   };
 

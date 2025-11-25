@@ -245,3 +245,43 @@ export async function markAsGone(inspectionId: string): Promise<void> {
     updatedAt: now,
   });
 }
+
+// Get all inspections for admin dashboard
+export async function getAllInspections(): Promise<Inspection[]> {
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    orderBy('createdAt', 'desc')
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Inspection));
+}
+
+// Subscribe to all inspections (real-time)
+export function subscribeToAllInspections(
+  callback: (inspections: Inspection[]) => void,
+  onError?: (error: Error) => void
+): () => void {
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    orderBy('createdAt', 'desc')
+  );
+  
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const inspections = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Inspection));
+      callback(inspections);
+    },
+    (error) => {
+      console.error('Error subscribing to inspections:', error);
+      if (onError) onError(error);
+    }
+  );
+}
