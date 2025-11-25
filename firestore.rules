@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Inspectors collection
+    match /inspectors/{inspectorId} {
+      allow read: if true;
+      allow write: if true; // Will tighten in Phase 2 with proper authentication
+    }
+    
+    // Inspections collection
+    match /inspections/{inspectionId} {
+      allow read, write: if true; // Will tighten in Phase 2 with proper authentication
+    }
+  }
+}
