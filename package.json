@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup": "node scripts/setup.cjs",
+    "setup:inspectors": "node scripts/setup.cjs",
+    "add-inspector": "node scripts/add-inspector.cjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
@@ -28,6 +31,7 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "dotenv": "^16.4.5",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

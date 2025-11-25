@@ -101,36 +101,26 @@ A mobile-first Progressive Web App (PWA) for trucking yard inspections. Two insp
 
 6. **Add Initial Inspector Data**
 
-   In the Firebase Console, go to Firestore Database and create the `inspectors` collection with sample documents:
+   Run the setup script to add your inspectors:
 
-   ```javascript
-   // Document 1
-   {
-     name: "John Smith",
-     isAdmin: false,
-     active: true,
-     createdAt: Timestamp,
-     updatedAt: Timestamp
-   }
-
-   // Document 2
-   {
-     name: "Jane Doe",
-     isAdmin: false,
-     active: true,
-     createdAt: Timestamp,
-     updatedAt: Timestamp
-   }
-
-   // Document 3 (Admin)
-   {
-     name: "Admin User",
-     isAdmin: true,
-     active: true,
-     createdAt: Timestamp,
-     updatedAt: Timestamp
-   }
+   ```bash
+   npm run setup
    ```
+
+   This will add the initial inspectors:
+   - Matt Hale (Admin)
+   - Jason Bell
+   - Alexis McElhaney
+   - Derek Owen
+
+   To add more inspectors later, use the add-inspector script:
+
+   ```bash
+   npm run add-inspector "New Inspector Name"
+   npm run add-inspector "New Admin Name" --admin
+   ```
+
+   Or add them directly in the Firebase Console.
 
 ### Local Development
 
