@@ -25,7 +25,7 @@ const requiredConfigKeys = [
 
 // Validate all required config values are present
 function validateConfig() {
-  const missingKeys = requiredConfigKeys.filter(key => !process.env[key]);
+  const missingKeys = requiredConfigKeys.filter(key => !process.env[key] || process.env[key].trim() === '');
   
   if (missingKeys.length > 0) {
     console.error('❌ Error: Missing Firebase configuration values:');
