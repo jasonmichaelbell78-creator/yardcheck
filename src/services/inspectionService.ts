@@ -173,10 +173,12 @@ export async function updateChecklistItem(
 ): Promise<void> {
   // Validate inputs
   const validatedInspectorName = validateInspectorName(inspectorName);
-  const sanitizedComment = data.comment !== undefined ? sanitizeComment(data.comment) : '';
   
-  // Validate itemId to prevent injection
-  if (!/^[a-zA-Z]+$/.test(itemId)) {
+  // Only sanitize comment if it's provided
+  const sanitizedComment = data.comment ? sanitizeComment(data.comment) : '';
+  
+  // Validate itemId - must be camelCase identifier (letters only for this app's schema)
+  if (!itemId || !/^[a-zA-Z]+$/.test(itemId)) {
     throw new Error('Invalid item ID');
   }
   
