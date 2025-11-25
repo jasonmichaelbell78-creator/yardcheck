@@ -33,6 +33,11 @@ function getItemData(
   return sectionData[itemId as keyof (InteriorChecklist | ExteriorChecklist)] as ChecklistItemData | undefined;
 }
 
+// PDF layout constants
+const PAGE_HEIGHT_LIMIT = 280;
+const LINE_HEIGHT_MULTIPLIER = 0.4;
+const LINE_SPACING = 4;
+
 export function generateInspectionPDF(inspection: Inspection): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -49,13 +54,13 @@ export function generateInspectionPDF(inspection: Inspection): void {
     const lines = doc.splitTextToSize(text, contentWidth);
     
     // Check if we need a new page
-    if (yPosition + lines.length * (fontSize * 0.4) > 280) {
+    if (yPosition + lines.length * (fontSize * LINE_HEIGHT_MULTIPLIER) > PAGE_HEIGHT_LIMIT) {
       doc.addPage();
       yPosition = 20;
     }
     
     doc.text(lines, margin, yPosition);
-    yPosition += lines.length * (fontSize * 0.4) + 4;
+    yPosition += lines.length * (fontSize * LINE_HEIGHT_MULTIPLIER) + LINE_SPACING;
   };
 
   // Title
