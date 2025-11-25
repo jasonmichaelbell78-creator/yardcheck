@@ -1,9 +1,40 @@
-// scripts/add-inspector.js
-// Usage: node scripts/add-inspector.js "Inspector Name" [--admin]
+// scripts/add-inspector.cjs
+// Usage: node scripts/add-inspector.cjs "Inspector Name" [--admin]
 
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } = require('firebase/firestore');
-require('dotenv').config({ path: '.env.local' });
+const fs = require('fs');
+const path = require('path');
+
+// Load environment variables from .env.local if it exists (for local development)
+// In CI, environment variables are passed directly via the workflow
+const envLocalPath = path.resolve(__dirname, '..', '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  require('dotenv').config({ path: envLocalPath });
+}
+
+// Required Firebase config keys
+const requiredConfigKeys = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+];
+
+// Validate all required config values are present
+function validateConfig() {
+  const missingKeys = requiredConfigKeys.filter(key => !process.env[key]);
+  
+  if (missingKeys.length > 0) {
+    console.error('❌ Error: Missing Firebase configuration values:');
+    missingKeys.forEach(key => console.error(`   - ${key}`));
+    console.error('\n   For local development: Create .env.local with your Firebase configuration.');
+    console.error('   For CI: Ensure GitHub Secrets are configured for all required values.');
+    process.exit(1);
+  }
+}
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -19,16 +50,12 @@ async function addInspector(name, isAdmin = false) {
   console.log('===========================\n');
 
   // Validate environment variables
-  if (!process.env.VITE_FIREBASE_PROJECT_ID) {
-    console.error('❌ Error: .env.local file not found or missing Firebase config.');
-    console.error('   Please create .env.local with your Firebase configuration.');
-    process.exit(1);
-  }
+  validateConfig();
 
   // Validate name
   if (!name || name.trim() === '') {
     console.error('❌ Error: Inspector name is required.');
-    console.error('   Usage: node scripts/add-inspector.js "Inspector Name" [--admin]');
+    console.error('   Usage: node scripts/add-inspector.cjs "Inspector Name" [--admin]');
     process.exit(1);
   }
 
