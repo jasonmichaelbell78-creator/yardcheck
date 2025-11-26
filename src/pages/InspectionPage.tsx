@@ -16,6 +16,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ChecklistSection } from '@/components/ChecklistSection';
 import { DefectPhotos } from '@/components/DefectPhotos';
+import { CapturedPhotos } from '@/components/CapturedPhotos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInspection } from '@/hooks/useInspection';
 import { CHECKLIST_CONFIG, TOTAL_CHECKLIST_ITEMS } from '@/config/checklist';
@@ -249,6 +250,9 @@ export function InspectionPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Captured Photos Gallery */}
+        <CapturedPhotos inspection={inspection} />
       </main>
 
       {/* Fixed Bottom Actions */}

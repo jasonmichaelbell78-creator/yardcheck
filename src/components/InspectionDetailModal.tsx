@@ -58,6 +58,7 @@ function getItemData(
 export function InspectionDetailModal({ inspection, open, onClose, onStatusChanged }: InspectionDetailModalProps) {
   const [showGoneConfirm, setShowGoneConfirm] = useState(false);
   const [markingAsGone, setMarkingAsGone] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
@@ -66,8 +67,16 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
 
   if (!inspection) return null;
 
-  const handleExportPDF = () => {
-    generateInspectionPDF(inspection);
+  const handleExportPDF = async () => {
+    setExportingPDF(true);
+    setError(null);
+    try {
+      await generateInspectionPDF(inspection);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate PDF');
+    } finally {
+      setExportingPDF(false);
+    }
   };
 
   const handleMarkAsGone = async () => {
@@ -137,8 +146,12 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
                   Mark as Gone
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                <FileDown className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exportingPDF}>
+                {exportingPDF ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4 mr-2" />
+                )}
                 Export PDF
               </Button>
             </div>
