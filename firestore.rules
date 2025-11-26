@@ -34,6 +34,14 @@ service cloud.firestore {
       allow write: if true;
     }
     
+    // Email recipients collection
+    // Used for managing email notification recipients
+    match /emailRecipients/{recipientId} {
+      allow read: if true;
+      // Allow writes - in production this should check for admin auth
+      allow write: if true;
+    }
+    
     // Inspections collection
     // Note: Full authentication will be added in Phase 2
     match /inspections/{inspectionId} {

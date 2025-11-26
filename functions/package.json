@@ -1,0 +1,27 @@
+{
+  "name": "yardcheck-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for YardCheck",
+  "main": "lib/index.js",
+  "scripts": {
+    "lint": "eslint --ext .ts src",
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.4",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "typescript": "~5.7.2"
+  },
+  "private": true
+}

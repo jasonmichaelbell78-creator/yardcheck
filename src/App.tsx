@@ -5,6 +5,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { TruckEntryPage } from '@/pages/TruckEntryPage';
 import { InspectionPage } from '@/pages/InspectionPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
+import { AdminEmailRecipientsPage } from '@/pages/AdminEmailRecipientsPage';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 // Protected route component
@@ -43,6 +44,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/email-recipients"
+        element={
+          <ProtectedRoute>
+            <AdminEmailRecipientsPage />
           </ProtectedRoute>
         }
       />

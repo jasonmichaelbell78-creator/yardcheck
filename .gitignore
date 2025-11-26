@@ -26,3 +26,7 @@ dist-ssr
 # Firebase
 .firebase/
 firebase-debug.log
+
+# Functions
+functions/lib
+functions/node_modules

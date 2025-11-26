@@ -16,6 +16,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ChecklistSection } from '@/components/ChecklistSection';
 import { DefectPhotos } from '@/components/DefectPhotos';
+import { EmailReportOptions } from '@/components/EmailReportOptions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInspection } from '@/hooks/useInspection';
 import { CHECKLIST_CONFIG, TOTAL_CHECKLIST_ITEMS } from '@/config/checklist';
@@ -249,6 +250,9 @@ export function InspectionPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Email Report Options - shown only when there are defects/issues */}
+        <EmailReportOptions inspection={inspection} />
       </main>
 
       {/* Fixed Bottom Actions */}

@@ -138,8 +138,16 @@ export async function reactivateInspector(id: string): Promise<void> {
   });
 }
 
+const MAX_EMAIL_LENGTH = 254; // RFC 5321 limit
+
+// Validate email format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // Update an inspector
-export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin'>>): Promise<void> {
+export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin' | 'email'>>): Promise<void> {
   const updateData: Record<string, unknown> = {
     updatedAt: Timestamp.now(),
   };
@@ -154,6 +162,22 @@ export async function updateInspector(id: string, data: Partial<Pick<Inspector, 
   
   if (data.isAdmin !== undefined) {
     updateData.isAdmin = data.isAdmin;
+  }
+  
+  if (data.email !== undefined) {
+    const trimmedEmail = data.email.trim().toLowerCase();
+    // Allow empty email (to clear it)
+    if (trimmedEmail) {
+      if (trimmedEmail.length > MAX_EMAIL_LENGTH) {
+        throw new Error('Email address is too long');
+      }
+      if (!isValidEmail(trimmedEmail)) {
+        throw new Error('Invalid email format');
+      }
+      updateData.email = trimmedEmail;
+    } else {
+      updateData.email = null;
+    }
   }
   
   const docRef = doc(db, COLLECTION_NAME, id);

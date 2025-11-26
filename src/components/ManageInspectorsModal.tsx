@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle } from 'lucide-react';
+import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle, Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +14,7 @@ import {
   addInspector,
   deactivateInspector,
   reactivateInspector,
+  updateInspector,
   MAX_ACTIVE_INSPECTORS,
 } from '@/services/inspectorService';
 import type { Inspector } from '@/types';
@@ -32,6 +33,11 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   const [newName, setNewName] = useState('');
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [addingInspector, setAddingInspector] = useState(false);
+  
+  // Edit state
+  const [editingInspector, setEditingInspector] = useState<Inspector | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   
   // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -103,6 +109,33 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     } finally {
       setActionLoading(null);
       setConfirmAction(null);
+    }
+  };
+
+  const handleStartEdit = (inspector: Inspector) => {
+    setEditingInspector(inspector);
+    setEditEmail(inspector.email || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingInspector(null);
+    setEditEmail('');
+  };
+
+  const handleSaveEmail = async () => {
+    if (!editingInspector) return;
+    
+    setSavingEdit(true);
+    setError(null);
+    
+    try {
+      await updateInspector(editingInspector.id, { email: editEmail.trim() });
+      setEditingInspector(null);
+      setEditEmail('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update email');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -193,27 +226,68 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                         key={inspector.id}
                         className="flex items-center justify-between p-3 bg-background border rounded-lg"
                       >
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-medium">{inspector.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {inspector.isAdmin ? 'Admin' : 'Inspector'}
+                            {inspector.email && ` • ${inspector.email}`}
                           </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setConfirmAction({ type: 'deactivate', inspector })}
-                          disabled={actionLoading === inspector.id}
-                        >
-                          {actionLoading === inspector.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <UserMinus className="w-4 h-4 mr-1" />
-                              Deactivate
-                            </>
+                          {editingInspector?.id === inspector.id && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <Input
+                                type="email"
+                                value={editEmail}
+                                onChange={(e) => setEditEmail(e.target.value)}
+                                placeholder="Email address"
+                                className="flex-1 text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEmail}
+                                disabled={savingEdit}
+                              >
+                                {savingEdit ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Save className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
                           )}
-                        </Button>
+                        </div>
+                        {editingInspector?.id !== inspector.id && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStartEdit(inspector)}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setConfirmAction({ type: 'deactivate', inspector })}
+                              disabled={actionLoading === inspector.id}
+                            >
+                              {actionLoading === inspector.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <UserMinus className="w-4 h-4 mr-1" />
+                                  Deactivate
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
