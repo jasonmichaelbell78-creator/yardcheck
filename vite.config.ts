@@ -37,6 +37,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Don't intercept these file types - let them be served directly
+        navigateFallbackDenylist: [/\.pdf$/, /\.json$/, /\.xml$/, /\.txt$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
