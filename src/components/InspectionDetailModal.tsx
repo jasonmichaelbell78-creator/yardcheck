@@ -1,21 +1,25 @@
-import { FileDown, X } from 'lucide-react';
+import { useState } from 'react';
+import { FileDown, X, Truck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Inspection, ChecklistItemData, InteriorChecklist, ExteriorChecklist } from '@/types';
 import { CHECKLIST_CONFIG } from '@/config/checklist';
 import { generateInspectionPDF } from '@/utils/pdfGenerator';
 import { formatTimestamp } from '@/utils/validation';
+import { markAsGone } from '@/services/inspectionService';
 
 interface InspectionDetailModalProps {
   inspection: Inspection | null;
   open: boolean;
   onClose: () => void;
+  onStatusChanged?: () => void;
 }
 
 function getStatusBadgeClass(status: string): string {
@@ -49,12 +53,33 @@ function getItemData(
   return sectionData[itemId as keyof (InteriorChecklist | ExteriorChecklist)] as ChecklistItemData | undefined;
 }
 
-export function InspectionDetailModal({ inspection, open, onClose }: InspectionDetailModalProps) {
+export function InspectionDetailModal({ inspection, open, onClose, onStatusChanged }: InspectionDetailModalProps) {
+  const [showGoneConfirm, setShowGoneConfirm] = useState(false);
+  const [markingAsGone, setMarkingAsGone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   if (!inspection) return null;
 
   const handleExportPDF = () => {
     generateInspectionPDF(inspection);
   };
+
+  const handleMarkAsGone = async () => {
+    setMarkingAsGone(true);
+    setError(null);
+    
+    try {
+      await markAsGone(inspection.id);
+      setShowGoneConfirm(false);
+      if (onStatusChanged) onStatusChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark as gone');
+    } finally {
+      setMarkingAsGone(false);
+    }
+  };
+
+  const canMarkAsGone = inspection.status === 'in-progress';
 
   return (
     <Dialog open={open} onClose={onClose}>
@@ -76,15 +101,33 @@ export function InspectionDetailModal({ inspection, open, onClose }: InspectionD
 
         <div className="space-y-4">
           {/* Status and Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(inspection.status)}`}>
               {inspection.status.toUpperCase()}
             </span>
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <FileDown className="w-4 h-4 mr-2" />
-              Export PDF
-            </Button>
+            <div className="flex gap-2">
+              {canMarkAsGone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowGoneConfirm(true)}
+                >
+                  <Truck className="w-4 h-4 mr-2" />
+                  Mark as Gone
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <FileDown className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
           </div>
+
+          {error && (
+            <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Info Section */}
           <Card>
@@ -150,6 +193,43 @@ export function InspectionDetailModal({ inspection, open, onClose }: InspectionD
           )}
         </div>
       </DialogContent>
+
+      {/* Mark as Gone Confirmation Dialog */}
+      <Dialog open={showGoneConfirm} onClose={() => setShowGoneConfirm(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark Truck as Gone?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will mark truck <strong>#{inspection.truckNumber}</strong> as "gone" (left the yard).
+            This action cannot be undone.
+          </p>
+          <DialogFooter className="flex-row gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setShowGoneConfirm(false)}
+              disabled={markingAsGone}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMarkAsGone}
+              disabled={markingAsGone}
+              className="flex-1"
+            >
+              {markingAsGone ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Mark as Gone'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

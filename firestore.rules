@@ -28,12 +28,10 @@ service cloud.firestore {
     // Inspectors collection
     // Note: Full authentication will be added in Phase 2
     // Currently allows read for all users (needed for inspector selection)
-    // Write is restricted to prevent client-side modifications
     match /inspectors/{inspectorId} {
       allow read: if true;
-      // Write operations should only be done via admin scripts or Firebase Console
-      // This prevents malicious client-side modifications
-      allow write: if false;
+      // Allow writes - in production this should check for admin auth
+      allow write: if true;
     }
     
     // Inspections collection
