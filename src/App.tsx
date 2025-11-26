@@ -5,6 +5,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { TruckEntryPage } from '@/pages/TruckEntryPage';
 import { InspectionPage } from '@/pages/InspectionPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 // Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,7 @@ function App() {
       <AuthProvider>
         <Router>
           <AppRoutes />
+          <UpdatePrompt />
         </Router>
       </AuthProvider>
     </ConnectionProvider>
