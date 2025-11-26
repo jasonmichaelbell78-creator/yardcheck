@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User } from 'lucide-react';
+import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -241,6 +241,15 @@ export function AdminDashboardPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open('/YardCheck-User-Guide.pdf', '_blank')}
+                className="text-white hover:bg-white/10"
+              >
+                <HelpCircle className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">User Guide</span>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

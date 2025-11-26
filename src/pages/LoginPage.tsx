@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Shield } from 'lucide-react';
+import { Truck, Shield, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -133,6 +133,19 @@ export function LoginPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Help Link */}
+        <div className="text-center mt-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open('/YardCheck-User-Guide.pdf', '_blank')}
+            className="text-muted-foreground hover:text-primary"
+          >
+            <HelpCircle className="w-4 h-4 mr-1" />
+            User Guide
+          </Button>
+        </div>
 
         {/* Loading state */}
         {loading && (
