@@ -8,7 +8,27 @@
     ],
     "rewrites": [
       {
-        "source": "!**/*.@(pdf|ico|png|jpg|jpeg|gif|svg|webp|json|xml|txt)",
+        "source": "/",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/admin",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/trucks",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/trucks/**",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/inspection/**",
         "destination": "/index.html"
       }
     ],
@@ -37,6 +57,10 @@
           {
             "key": "Content-Type",
             "value": "application/pdf"
+          },
+          {
+            "key": "Content-Disposition",
+            "value": "inline"
           }
         ]
       }
