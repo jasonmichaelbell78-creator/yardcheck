@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileDown, X, Truck, Loader2 } from 'lucide-react';
+import { FileDown, X, Truck, Loader2, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,11 +9,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 import type { Inspection, ChecklistItemData, InteriorChecklist, ExteriorChecklist } from '@/types';
 import { CHECKLIST_CONFIG } from '@/config/checklist';
 import { generateInspectionPDF } from '@/utils/pdfGenerator';
 import { formatTimestamp } from '@/utils/validation';
 import { markAsGone } from '@/services/inspectionService';
+import { cn } from '@/utils/cn';
 
 interface InspectionDetailModalProps {
   inspection: Inspection | null;
@@ -57,6 +59,10 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
   const [showGoneConfirm, setShowGoneConfirm] = useState(false);
   const [markingAsGone, setMarkingAsGone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxCaptions, setLightboxCaptions] = useState<string[]>([]);
 
   if (!inspection) return null;
 
@@ -77,6 +83,21 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
     } finally {
       setMarkingAsGone(false);
     }
+  };
+
+  const handlePhotoClick = (photoUrl: string, caption?: string) => {
+    setLightboxPhotos([photoUrl]);
+    setLightboxCaptions(caption ? [caption] : []);
+    setLightboxIndex(0);
+    setLightboxOpen(true);
+  };
+
+  const handleDefectPhotosClick = (index: number) => {
+    const photos = inspection.defectPhotos || [];
+    setLightboxPhotos(photos.map(p => p.url));
+    setLightboxCaptions(photos.map(p => p.caption || ''));
+    setLightboxIndex(index);
+    setLightboxOpen(true);
   };
 
   const canMarkAsGone = inspection.status === 'in-progress';
@@ -161,11 +182,35 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
                     
                     return (
                       <div key={item.id} className="flex flex-col gap-1 py-1 border-b border-gray-100 last:border-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">{item.label}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getValueBadgeClass(value ?? null)}`}>
-                            {value ? value.toUpperCase() : 'N/A'}
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm flex-1">{item.label}</span>
+                          <div className="flex items-center gap-2">
+                            {/* Photo thumbnail for exterior items */}
+                            {section.id === 'exterior' && itemData?.photoUrl && (
+                              <button
+                                onClick={() => handlePhotoClick(itemData.photoUrl!, `${item.label} - Photo`)}
+                                className={cn(
+                                  'w-8 h-8 rounded overflow-hidden border border-gray-200',
+                                  'hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary'
+                                )}
+                                title="View photo"
+                              >
+                                <img
+                                  src={itemData.photoUrl}
+                                  alt={`${item.label} photo`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            )}
+                            {section.id === 'exterior' && !itemData?.photoUrl && (
+                              <span title="No photo">
+                                <Camera className="w-4 h-4 text-gray-300" />
+                              </span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getValueBadgeClass(value ?? null)}`}>
+                              {value ? value.toUpperCase() : 'N/A'}
+                            </span>
+                          </div>
                         </div>
                         {itemData?.comment && (
                           <p className="text-xs text-muted-foreground italic pl-2">
@@ -181,18 +226,59 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
           })}
 
           {/* Additional Defects */}
-          {inspection.additionalDefects && (
+          {(inspection.additionalDefects || (inspection.defectPhotos && inspection.defectPhotos.length > 0)) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Additional Defects</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{inspection.additionalDefects}</p>
+              <CardContent className="space-y-3">
+                {inspection.additionalDefects && (
+                  <p className="text-sm whitespace-pre-wrap">{inspection.additionalDefects}</p>
+                )}
+                
+                {/* Defect Photos Gallery */}
+                {inspection.defectPhotos && inspection.defectPhotos.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-muted-foreground mb-2">Defect Photos ({inspection.defectPhotos.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {inspection.defectPhotos.map((photo, index) => (
+                        <button
+                          key={photo.url}
+                          onClick={() => handleDefectPhotosClick(index)}
+                          className={cn(
+                            'relative w-[60px] h-[60px] rounded-md overflow-hidden border border-gray-200',
+                            'hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary'
+                          )}
+                        >
+                          <img
+                            src={photo.url}
+                            alt={photo.caption || `Defect photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {photo.caption && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] px-1 truncate">
+                              {photo.caption}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
         </div>
       </DialogContent>
+
+      {/* Photo Lightbox */}
+      <PhotoLightbox
+        photos={lightboxPhotos}
+        captions={lightboxCaptions}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
 
       {/* Mark as Gone Confirmation Dialog */}
       <Dialog open={showGoneConfirm} onClose={() => setShowGoneConfirm(false)}>
