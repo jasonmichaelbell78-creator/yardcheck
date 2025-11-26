@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search } from 'lucide-react';
+import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatsCard } from '@/components/StatsCard';
 import { InspectionDetailModal } from '@/components/InspectionDetailModal';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { ManageInspectorsModal } from '@/components/ManageInspectorsModal';
+import { DailyReportModal } from '@/components/DailyReportModal';
+import { DateRangePicker } from '@/components/DateRangePicker';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToAllInspections } from '@/services/inspectionService';
-import type { Inspection, InspectionStatus } from '@/types';
-import { formatTimestamp } from '@/utils/validation';
+import { getActiveInspectors } from '@/services/inspectorService';
+import type { Inspection, InspectionStatus, Inspector } from '@/types';
 
 function getStatusBadgeClass(status: InspectionStatus): string {
   switch (status) {
@@ -33,21 +36,60 @@ function isToday(timestamp: { toDate: () => Date } | null): boolean {
   return date.toDateString() === today.toDateString();
 }
 
+// Format timestamp for display
+function formatTimestampDisplay(timestamp: { toDate: () => Date } | null): string {
+  if (!timestamp) return 'N/A';
+  const date = timestamp.toDate();
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+// Check if date is within range
+function isDateInRange(timestamp: { toDate: () => Date } | null, startDate: string, endDate: string): boolean {
+  if (!timestamp) return false;
+  const date = timestamp.toDate();
+  
+  // Normalize to date-only comparison
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  if (startDate) {
+    const start = new Date(startDate + 'T00:00:00');
+    if (dateOnly < start) return false;
+  }
+  
+  if (endDate) {
+    const end = new Date(endDate + 'T23:59:59');
+    if (dateOnly > end) return false;
+  }
+  
+  return true;
+}
+
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const { currentInspector, setCurrentInspector } = useAuth();
   const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [allInspectors, setAllInspectors] = useState<Inspector[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [inspectorFilter, setInspectorFilter] = useState<string>('all');
   
-  // Modal
+  // Modals
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showManageInspectors, setShowManageInspectors] = useState(false);
+  const [showDailyReport, setShowDailyReport] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllInspections(
@@ -60,6 +102,11 @@ export function AdminDashboardPage() {
         setLoading(false);
       }
     );
+
+    // Load inspectors for filter
+    getActiveInspectors()
+      .then(setAllInspectors)
+      .catch(console.error);
 
     return () => unsubscribe();
   }, []);
@@ -85,15 +132,20 @@ export function AdminDashboardPage() {
         return false;
       }
 
-      // Date filter
-      if (dateFilter === 'today' && !isToday(inspection.createdAt)) {
-        return false;
-      } else if (dateFilter === 'week') {
-        const date = inspection.createdAt?.toDate();
-        if (!date) return false;
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        if (date < weekAgo) return false;
+      // Date range filter
+      if (startDate || endDate) {
+        if (!isDateInRange(inspection.createdAt, startDate, endDate)) {
+          return false;
+        }
+      }
+
+      // Inspector filter
+      if (inspectorFilter !== 'all') {
+        const matchesInspector1 = inspection.inspector1 === inspectorFilter;
+        const matchesInspector2 = inspection.inspector2 === inspectorFilter;
+        if (!matchesInspector1 && !matchesInspector2) {
+          return false;
+        }
       }
 
       // Search filter
@@ -109,7 +161,19 @@ export function AdminDashboardPage() {
 
       return true;
     });
-  }, [inspections, statusFilter, dateFilter, searchQuery]);
+  }, [inspections, statusFilter, startDate, endDate, inspectorFilter, searchQuery]);
+
+  // Calculate inspector-specific stats when filtered
+  const inspectorStats = useMemo(() => {
+    if (inspectorFilter === 'all') return null;
+    
+    const inspectorInspections = filteredInspections;
+    const total = inspectorInspections.length;
+    const completed = inspectorInspections.filter((i) => i.status === 'complete').length;
+    const inProgress = inspectorInspections.filter((i) => i.status === 'in-progress').length;
+    
+    return { total, completed, inProgress };
+  }, [filteredInspections, inspectorFilter]);
 
   const handleBackToLogin = () => {
     setCurrentInspector(null);
@@ -118,11 +182,11 @@ export function AdminDashboardPage() {
 
   const handleRowClick = (inspection: Inspection) => {
     setSelectedInspection(inspection);
-    setShowModal(true);
+    setShowDetailModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
     setSelectedInspection(null);
   };
 
@@ -169,11 +233,33 @@ export function AdminDashboardPage() {
             </Button>
             <ConnectionStatus />
           </div>
-          <div>
-            <h1 className="font-bold text-xl">Admin Dashboard</h1>
-            <p className="text-sm text-white/80">
-              Welcome, {currentInspector.name}
-            </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="font-bold text-xl">Admin Dashboard</h1>
+              <p className="text-sm text-white/80">
+                Welcome, {currentInspector.name}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDailyReport(true)}
+                className="text-white hover:bg-white/10"
+              >
+                <FileText className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Daily Report</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowManageInspectors(true)}
+                className="text-white hover:bg-white/10"
+              >
+                <Users className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Manage Inspectors</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -208,7 +294,7 @@ export function AdminDashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Filters</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Search */}
               <div className="relative">
@@ -232,18 +318,57 @@ export function AdminDashboardPage() {
                 <option value="gone">Gone</option>
               </Select>
 
-              {/* Date Filter */}
+              {/* Inspector Filter */}
               <Select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                value={inspectorFilter}
+                onChange={(e) => setInspectorFilter(e.target.value)}
               >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="week">Last 7 Days</option>
+                <option value="all">All Inspectors</option>
+                {allInspectors.map((inspector) => (
+                  <option key={inspector.id} value={inspector.name}>
+                    {inspector.name}
+                  </option>
+                ))}
               </Select>
             </div>
+
+            {/* Date Range Picker */}
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+            />
           </CardContent>
         </Card>
+
+        {/* Inspector Stats (when filtered) */}
+        {inspectorStats && (
+          <Card className="mb-4 border-blue-200 bg-blue-50/50">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-blue-800">
+                  Inspections by {inspectorFilter}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Total:</span>{' '}
+                  <span className="font-medium">{inspectorStats.total}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Completed:</span>{' '}
+                  <span className="font-medium text-green-600">{inspectorStats.completed}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">In Progress:</span>{' '}
+                  <span className="font-medium text-blue-600">{inspectorStats.inProgress}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Inspection Table */}
         <Card>
@@ -288,7 +413,7 @@ export function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="p-3 text-muted-foreground hidden md:table-cell">
-                          {formatTimestamp(inspection.createdAt)}
+                          {formatTimestampDisplay(inspection.createdAt)}
                         </td>
                       </tr>
                     ))}
@@ -303,8 +428,21 @@ export function AdminDashboardPage() {
       {/* Inspection Detail Modal */}
       <InspectionDetailModal
         inspection={selectedInspection}
-        open={showModal}
-        onClose={handleCloseModal}
+        open={showDetailModal}
+        onClose={handleCloseDetailModal}
+      />
+
+      {/* Manage Inspectors Modal */}
+      <ManageInspectorsModal
+        open={showManageInspectors}
+        onClose={() => setShowManageInspectors(false)}
+      />
+
+      {/* Daily Report Modal */}
+      <DailyReportModal
+        open={showDailyReport}
+        onClose={() => setShowDailyReport(false)}
+        inspections={inspections}
       />
     </div>
   );
