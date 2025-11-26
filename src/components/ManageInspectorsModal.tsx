@@ -14,6 +14,7 @@ import {
   addInspector,
   deactivateInspector,
   reactivateInspector,
+  MAX_ACTIVE_INSPECTORS,
 } from '@/services/inspectorService';
 import type { Inspector } from '@/types';
 
@@ -147,7 +148,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
               />
               <Button
                 onClick={handleAddInspector}
-                disabled={!newName.trim() || addingInspector || activeCount >= 20}
+                disabled={!newName.trim() || addingInspector || activeCount >= MAX_ACTIVE_INSPECTORS}
               >
                 {addingInspector ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -167,7 +168,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
               Is Admin
             </label>
             <p className="text-xs text-muted-foreground">
-              Active inspectors: {activeCount}/20
+              Active inspectors: {activeCount}/{MAX_ACTIVE_INSPECTORS}
             </p>
           </div>
 
@@ -241,7 +242,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                           variant="outline"
                           size="sm"
                           onClick={() => setConfirmAction({ type: 'reactivate', inspector })}
-                          disabled={actionLoading === inspector.id || activeCount >= 20}
+                          disabled={actionLoading === inspector.id || activeCount >= MAX_ACTIVE_INSPECTORS}
                         >
                           {actionLoading === inspector.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

@@ -14,7 +14,7 @@ import { db } from '@/config/firebase';
 import type { Inspector } from '@/types';
 
 const COLLECTION_NAME = 'inspectors';
-const MAX_ACTIVE_INSPECTORS = 20;
+export const MAX_ACTIVE_INSPECTORS = 20;
 const MAX_NAME_LENGTH = 100;
 
 // Get all active inspectors
