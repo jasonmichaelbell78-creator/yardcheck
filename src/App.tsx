@@ -4,6 +4,7 @@ import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { TruckEntryPage } from '@/pages/TruckEntryPage';
 import { InspectionPage } from '@/pages/InspectionPage';
+import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 
 // Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <InspectionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboardPage />
           </ProtectedRoute>
         }
       />
