@@ -39,6 +39,7 @@ export function UpdatePrompt() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            // Force immediate reload to apply the new service worker
             onClick={() => updateServiceWorker(true)}
             className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-50 transition-colors"
           >
