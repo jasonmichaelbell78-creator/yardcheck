@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X, Loader2 } from 'lucide-react';
 
 export function UpdatePrompt() {
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -19,6 +22,22 @@ export function UpdatePrompt() {
       console.log('SW registration error', error);
     },
   });
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      // Update the service worker
+      await updateServiceWorker(true);
+      // If updateServiceWorker doesn't reload automatically, force it
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to update:', error);
+      // Force reload anyway
+      window.location.reload();
+    }
+  };
 
   const close = () => {
     setNeedRefresh(false);
@@ -39,15 +58,23 @@ export function UpdatePrompt() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            // Force immediate reload to apply the new service worker
-            onClick={() => updateServiceWorker(true)}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-50 transition-colors"
+            onClick={handleUpdate}
+            disabled={isUpdating}
+            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-50 transition-colors disabled:opacity-50 flex items-center gap-1"
           >
-            Update
+            {isUpdating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              'Update'
+            )}
           </button>
           <button
             onClick={close}
-            className="rounded-md p-1.5 hover:bg-blue-700 transition-colors"
+            disabled={isUpdating}
+            className="rounded-md p-1.5 hover:bg-blue-700 transition-colors disabled:opacity-50"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
