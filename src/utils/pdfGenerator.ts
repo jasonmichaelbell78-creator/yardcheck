@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { Inspection, ChecklistItemData, InteriorChecklist, ExteriorChecklist } from '@/types';
+import type { Inspection, ChecklistItemData, InteriorChecklist, ExteriorChecklist, DefectPhoto } from '@/types';
 import { CHECKLIST_CONFIG } from '@/config/checklist';
 
 // Format timestamp for PDF display
@@ -37,8 +37,53 @@ function getItemData(
 const PAGE_HEIGHT_LIMIT = 280;
 const LINE_HEIGHT_MULTIPLIER = 0.4;
 const LINE_SPACING = 4;
+const PHOTO_WIDTH = 60;
+const PHOTO_HEIGHT = 45;
+const PHOTO_LABEL_MAX_LENGTH = 20;
+const PHOTO_LABEL_TRUNCATE_LENGTH = 17;
 
-export function generateInspectionPDF(inspection: Inspection): void {
+// Fetch image and convert to base64 data URL
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`Failed to fetch image: ${response.status} ${response.statusText} for URL: ${url}`);
+      return null;
+    }
+    
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn(`Error fetching image from ${url}:`, err);
+    return null;
+  }
+}
+
+// Extract image format from base64 data URL
+function getImageFormatFromBase64(base64: string): string {
+  const match = base64.match(/^data:image\/(\w+);base64,/);
+  if (match) {
+    const format = match[1].toUpperCase();
+    // jsPDF supports JPEG, PNG, WEBP, GIF
+    if (['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(format)) {
+      return format === 'JPG' ? 'JPEG' : format;
+    }
+  }
+  // Default to JPEG as fallback
+  return 'JPEG';
+}
+
+interface PhotoData {
+  label: string;
+  base64: string;
+}
+
+export async function generateInspectionPDF(inspection: Inspection): Promise<void> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -61,6 +106,14 @@ export function generateInspectionPDF(inspection: Inspection): void {
     
     doc.text(lines, margin, yPosition);
     yPosition += lines.length * (fontSize * LINE_HEIGHT_MULTIPLIER) + LINE_SPACING;
+  };
+
+  // Helper to check and add new page if needed
+  const checkNewPage = (heightNeeded: number) => {
+    if (yPosition + heightNeeded > PAGE_HEIGHT_LIMIT) {
+      doc.addPage();
+      yPosition = 20;
+    }
   };
 
   // Title
@@ -129,8 +182,89 @@ export function generateInspectionPDF(inspection: Inspection): void {
     addLine(inspection.additionalDefects, 10);
   }
 
+  // Collect and load all photos
+  const allPhotos: PhotoData[] = [];
+  
+  // Get exterior item photos
+  const exteriorSection = CHECKLIST_CONFIG.find((s) => s.id === 'exterior');
+  if (exteriorSection) {
+    for (const item of exteriorSection.items) {
+      const itemData = getItemData('exterior', item.id, inspection);
+      if (itemData?.photoUrl) {
+        const base64 = await fetchImageAsBase64(itemData.photoUrl);
+        if (base64) {
+          allPhotos.push({ label: item.label, base64 });
+        }
+      }
+    }
+  }
+
+  // Get defect photos
+  const defectPhotos = inspection.defectPhotos || [];
+  for (const photo of defectPhotos as DefectPhoto[]) {
+    const base64 = await fetchImageAsBase64(photo.url);
+    if (base64) {
+      allPhotos.push({ label: photo.caption || 'Defect Photo', base64 });
+    }
+  }
+
+  // Add photos section if there are any photos
+  if (allPhotos.length > 0) {
+    yPosition += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 10;
+    
+    addLine('Inspection Photos', 14, true);
+    yPosition += 5;
+
+    // Add photos in a grid (2 per row)
+    const photosPerRow = 2;
+    const photoSpacing = 10;
+    const labelHeight = 10;
+    
+    for (let i = 0; i < allPhotos.length; i++) {
+      const photo = allPhotos[i];
+      const col = i % photosPerRow;
+      
+      // Check if we need a new row
+      if (col === 0 && i > 0) {
+        yPosition += PHOTO_HEIGHT + labelHeight + 5;
+      }
+      
+      // Check if we need a new page
+      if (col === 0) {
+        checkNewPage(PHOTO_HEIGHT + labelHeight + 10);
+      }
+      
+      const xPos = margin + col * (PHOTO_WIDTH + photoSpacing);
+      
+      try {
+        const imageFormat = getImageFormatFromBase64(photo.base64);
+        doc.addImage(photo.base64, imageFormat, xPos, yPosition, PHOTO_WIDTH, PHOTO_HEIGHT);
+        
+        // Add label below photo
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        const truncatedLabel = photo.label.length > PHOTO_LABEL_MAX_LENGTH 
+          ? photo.label.substring(0, PHOTO_LABEL_TRUNCATE_LENGTH) + '...' 
+          : photo.label;
+        doc.text(truncatedLabel, xPos, yPosition + PHOTO_HEIGHT + 5);
+      } catch {
+        // If image fails to add, just add the label
+        doc.setFontSize(8);
+        doc.text(`[Image: ${photo.label}]`, xPos, yPosition + PHOTO_HEIGHT / 2);
+      }
+    }
+    
+    // Move past the last row of photos
+    yPosition += PHOTO_HEIGHT + labelHeight + 10;
+  }
+
   // Footer
   yPosition += 10;
+  checkNewPage(20);
   doc.setDrawColor(200, 200, 200);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;

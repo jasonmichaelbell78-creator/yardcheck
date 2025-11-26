@@ -145,7 +145,17 @@ export async function uploadDefectPhoto(
   validateImageFile(file);
 
   // Compress image before upload
-  const compressedBlob = await compressImage(file);
+  let compressedBlob = await compressImage(file);
+  
+  // If still too large, try with lower quality
+  if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
+    compressedBlob = await compressImage(file, JPEG_QUALITY_LOW);
+    
+    // If still too large after lower quality, throw error
+    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
+      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
+    }
+  }
 
   const timestamp = Date.now();
   const path = `inspections/${inspectionId}/defect_${timestamp}.jpg`;
