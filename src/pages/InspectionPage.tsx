@@ -15,6 +15,7 @@ import {
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ChecklistSection } from '@/components/ChecklistSection';
+import { DefectPhotos } from '@/components/DefectPhotos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInspection } from '@/hooks/useInspection';
 import { CHECKLIST_CONFIG, TOTAL_CHECKLIST_ITEMS } from '@/config/checklist';
@@ -34,6 +35,10 @@ export function InspectionPage() {
     complete,
     gone,
     joinAsSecondInspector,
+    captureItemPhoto,
+    deleteItemPhoto,
+    addDefectPhotoToInspection,
+    removeDefectPhotoFromInspection,
   } = useInspection(id || null);
 
   const [showGoneDialog, setShowGoneDialog] = useState(false);
@@ -97,6 +102,14 @@ export function InspectionPage() {
     updateComment(section, itemId, comment, currentInspector.name);
   };
 
+  const handlePhotoCapture = async (section: 'interior' | 'exterior', itemId: string, file: File) => {
+    await captureItemPhoto(section, itemId, file, currentInspector.name);
+  };
+
+  const handlePhotoDelete = async (section: 'interior' | 'exterior', itemId: string) => {
+    await deleteItemPhoto(section, itemId, currentInspector.name);
+  };
+
   const handleDefectsChange = (text: string) => {
     setLocalDefectsText(text);
     setDefectsSaved(false);
@@ -105,6 +118,14 @@ export function InspectionPage() {
   const handleSaveDefects = () => {
     updateDefects(localDefectsText);
     setDefectsSaved(true);
+  };
+
+  const handleAddDefectPhoto = async (file: File, caption?: string) => {
+    await addDefectPhotoToInspection(file, caption, currentInspector.name);
+  };
+
+  const handleDeleteDefectPhoto = async (photoUrl: string) => {
+    await removeDefectPhotoFromInspection(photoUrl);
   };
 
   const handleComplete = async () => {
@@ -187,6 +208,8 @@ export function InspectionPage() {
             }
             onValueChange={(itemId, value) => handleValueChange(section.id, itemId, value)}
             onCommentChange={(itemId, comment) => handleCommentChange(section.id, itemId, comment)}
+            onPhotoCapture={(itemId, file) => handlePhotoCapture(section.id, itemId, file)}
+            onPhotoDelete={(itemId) => handlePhotoDelete(section.id, itemId)}
             disabled={isInspectionClosed}
           />
         ))}
@@ -196,7 +219,7 @@ export function InspectionPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Additional Defects</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <Textarea
               placeholder="Note any additional defects or issues..."
               value={defectsText}
@@ -209,11 +232,21 @@ export function InspectionPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleSaveDefects}
-                className="mt-2"
               >
                 Save Notes
               </Button>
             )}
+            
+            {/* Defect Photos */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm font-medium text-gray-700 mb-2">Defect Photos</p>
+              <DefectPhotos
+                photos={inspection.defectPhotos || []}
+                onAddPhoto={handleAddDefectPhoto}
+                onDeletePhoto={handleDeleteDefectPhoto}
+                disabled={isInspectionClosed}
+              />
+            </div>
           </CardContent>
         </Card>
       </main>

@@ -1,15 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Inspection } from '@/types';
+import type { Inspection, DefectPhoto } from '@/types';
 import {
   subscribeToInspection,
   subscribeToInProgressInspections,
   updateChecklistItem,
+  updateChecklistItemPhoto,
   updateAdditionalDefects,
   completeInspection,
   markAsGone,
   addSecondInspector,
+  addDefectPhoto,
+  removeDefectPhoto,
 } from '@/services/inspectionService';
+import {
+  uploadInspectionPhoto,
+  uploadDefectPhoto,
+  deleteInspectionPhoto,
+} from '@/services/storageService';
 import { useConnection } from '@/contexts/ConnectionContext';
+import { Timestamp } from 'firebase/firestore';
 
 interface UseInspectionResult {
   inspection: Inspection | null;
@@ -31,6 +40,23 @@ interface UseInspectionResult {
   complete: () => Promise<void>;
   gone: () => Promise<void>;
   joinAsSecondInspector: (inspectorName: string) => Promise<void>;
+  captureItemPhoto: (
+    section: 'interior' | 'exterior',
+    itemId: string,
+    file: File,
+    inspectorName: string
+  ) => Promise<void>;
+  deleteItemPhoto: (
+    section: 'interior' | 'exterior',
+    itemId: string,
+    inspectorName: string
+  ) => Promise<void>;
+  addDefectPhotoToInspection: (
+    file: File,
+    caption: string | undefined,
+    inspectorName: string
+  ) => Promise<void>;
+  removeDefectPhotoFromInspection: (photoUrl: string) => Promise<void>;
 }
 
 export function useInspection(inspectionId: string | null): UseInspectionResult {
@@ -161,6 +187,109 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
     [inspectionId, setStatus]
   );
 
+  const captureItemPhoto = useCallback(
+    async (
+      section: 'interior' | 'exterior',
+      itemId: string,
+      file: File,
+      inspectorName: string
+    ) => {
+      if (!inspectionId) return;
+      try {
+        setStatus('syncing');
+        // Upload photo to storage
+        const photoUrl = await uploadInspectionPhoto(inspectionId, itemId, file);
+        // Update inspection document with photo URL
+        await updateChecklistItemPhoto(inspectionId, section, itemId, photoUrl, inspectorName);
+        setStatus('online');
+      } catch (err) {
+        console.error('Error capturing photo:', err);
+        setError('Failed to capture photo');
+        setStatus('offline');
+        throw err;
+      }
+    },
+    [inspectionId, setStatus]
+  );
+
+  const deleteItemPhoto = useCallback(
+    async (
+      section: 'interior' | 'exterior',
+      itemId: string,
+      inspectorName: string
+    ) => {
+      if (!inspectionId || !inspection) return;
+      try {
+        setStatus('syncing');
+        // Get current photo URL
+        const sectionData = section === 'interior' ? inspection.interior : inspection.exterior;
+        const itemData = sectionData[itemId as keyof typeof sectionData] as { photoUrl?: string | null } | undefined;
+        const photoUrl = itemData?.photoUrl;
+        
+        if (photoUrl) {
+          // Delete from storage
+          await deleteInspectionPhoto(photoUrl);
+        }
+        // Update inspection document to remove photo reference
+        await updateChecklistItemPhoto(inspectionId, section, itemId, null, inspectorName);
+        setStatus('online');
+      } catch (err) {
+        console.error('Error deleting photo:', err);
+        setError('Failed to delete photo');
+        setStatus('offline');
+        throw err;
+      }
+    },
+    [inspectionId, inspection, setStatus]
+  );
+
+  const addDefectPhotoToInspection = useCallback(
+    async (file: File, caption: string | undefined, inspectorName: string) => {
+      if (!inspectionId) return;
+      try {
+        setStatus('syncing');
+        // Upload photo to storage
+        const photoUrl = await uploadDefectPhoto(inspectionId, file);
+        // Create defect photo object
+        const defectPhoto: DefectPhoto = {
+          url: photoUrl,
+          caption,
+          takenBy: inspectorName,
+          takenAt: Timestamp.now(),
+        };
+        // Add to inspection document
+        await addDefectPhoto(inspectionId, defectPhoto);
+        setStatus('online');
+      } catch (err) {
+        console.error('Error adding defect photo:', err);
+        setError('Failed to add defect photo');
+        setStatus('offline');
+        throw err;
+      }
+    },
+    [inspectionId, setStatus]
+  );
+
+  const removeDefectPhotoFromInspection = useCallback(
+    async (photoUrl: string) => {
+      if (!inspectionId) return;
+      try {
+        setStatus('syncing');
+        // Delete from storage
+        await deleteInspectionPhoto(photoUrl);
+        // Remove from inspection document
+        await removeDefectPhoto(inspectionId, photoUrl);
+        setStatus('online');
+      } catch (err) {
+        console.error('Error removing defect photo:', err);
+        setError('Failed to remove defect photo');
+        setStatus('offline');
+        throw err;
+      }
+    },
+    [inspectionId, setStatus]
+  );
+
   return {
     inspection,
     loading,
@@ -171,6 +300,10 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
     complete,
     gone,
     joinAsSecondInspector,
+    captureItemPhoto,
+    deleteItemPhoto,
+    addDefectPhotoToInspection,
+    removeDefectPhotoFromInspection,
   };
 }
 

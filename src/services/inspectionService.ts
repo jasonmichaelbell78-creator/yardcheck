@@ -10,9 +10,11 @@ import {
   orderBy,
   onSnapshot,
   Timestamp,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import type { Inspection, ChecklistItemData } from '@/types';
+import type { Inspection, ChecklistItemData, DefectPhoto } from '@/types';
 import { createNewInspection } from '@/config/checklist';
 
 const COLLECTION_NAME = 'inspections';
@@ -309,4 +311,71 @@ export function subscribeToAllInspections(
       if (onError) onError(error);
     }
   );
+}
+
+// Update a checklist item's photo
+export async function updateChecklistItemPhoto(
+  inspectionId: string,
+  section: 'interior' | 'exterior',
+  itemId: string,
+  photoUrl: string | null,
+  inspectorName: string
+): Promise<void> {
+  // Validate inputs
+  const validatedInspectorName = validateInspectorName(inspectorName);
+  
+  // Validate itemId - must be camelCase identifier (letters only for this app's schema)
+  if (!itemId || !/^[a-zA-Z]+$/.test(itemId)) {
+    throw new Error('Invalid item ID');
+  }
+  
+  const docRef = doc(db, COLLECTION_NAME, inspectionId);
+  const now = Timestamp.now();
+  
+  await updateDoc(docRef, {
+    [`${section}.${itemId}.photoUrl`]: photoUrl,
+    [`${section}.${itemId}.photoTakenBy`]: photoUrl ? validatedInspectorName : null,
+    [`${section}.${itemId}.photoTakenAt`]: photoUrl ? now : null,
+    updatedAt: now,
+  });
+}
+
+// Add a defect photo to an inspection
+export async function addDefectPhoto(
+  inspectionId: string,
+  photo: DefectPhoto
+): Promise<void> {
+  const docRef = doc(db, COLLECTION_NAME, inspectionId);
+  
+  await updateDoc(docRef, {
+    defectPhotos: arrayUnion(photo),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Remove a defect photo from an inspection
+export async function removeDefectPhoto(
+  inspectionId: string,
+  photoUrl: string
+): Promise<void> {
+  // First, get the current inspection to find the full photo object
+  const docRef = doc(db, COLLECTION_NAME, inspectionId);
+  const docSnap = await getDoc(docRef);
+  
+  if (!docSnap.exists()) {
+    throw new Error('Inspection not found');
+  }
+  
+  const inspection = docSnap.data() as Inspection;
+  const defectPhotos = inspection.defectPhotos || [];
+  
+  // Find the photo to remove
+  const photoToRemove = defectPhotos.find(p => p.url === photoUrl);
+  
+  if (photoToRemove) {
+    await updateDoc(docRef, {
+      defectPhotos: arrayRemove(photoToRemove),
+      updatedAt: Timestamp.now(),
+    });
+  }
 }

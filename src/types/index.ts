@@ -16,6 +16,17 @@ export interface ChecklistItemData {
   comment: string;
   answeredBy: string;
   answeredAt: Timestamp | null;
+  photoUrl?: string | null;
+  photoTakenBy?: string | null;
+  photoTakenAt?: Timestamp | null;
+}
+
+// Defect photo data
+export interface DefectPhoto {
+  url: string;
+  caption?: string;
+  takenBy: string;
+  takenAt: Timestamp;
 }
 
 // Inspection status types
@@ -56,6 +67,7 @@ export interface Inspection {
   interior: InteriorChecklist;
   exterior: ExteriorChecklist;
   additionalDefects: string;
+  defectPhotos?: DefectPhoto[];
 }
 
 // Checklist configuration types

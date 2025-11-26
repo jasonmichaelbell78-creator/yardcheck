@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { PhotoCapture } from '@/components/PhotoCapture';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { MessageSquare, X, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { ChecklistItemConfig, ChecklistItemData } from '@/types';
@@ -10,6 +12,9 @@ interface ChecklistItemProps {
   data: ChecklistItemData;
   onValueChange: (value: string) => void;
   onCommentChange: (comment: string) => void;
+  allowPhoto?: boolean;
+  onPhotoCapture?: (file: File) => Promise<void>;
+  onPhotoDelete?: () => Promise<void>;
   disabled?: boolean;
 }
 
@@ -18,10 +23,14 @@ export function ChecklistItem({
   data,
   onValueChange,
   onCommentChange,
+  allowPhoto = false,
+  onPhotoCapture,
+  onPhotoDelete,
   disabled = false,
 }: ChecklistItemProps) {
   const [showComment, setShowComment] = useState(!!data.comment);
   const [commentText, setCommentText] = useState(data.comment);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const handleCommentSave = () => {
     onCommentChange(commentText);
@@ -98,6 +107,15 @@ export function ChecklistItem({
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
+          {allowPhoto && onPhotoCapture && (
+            <PhotoCapture
+              onCapture={onPhotoCapture}
+              existingPhotoUrl={data.photoUrl}
+              onDelete={onPhotoDelete}
+              onPhotoClick={() => data.photoUrl && setLightboxOpen(true)}
+              disabled={disabled}
+            />
+          )}
         </div>
       </div>
       
@@ -140,6 +158,15 @@ export function ChecklistItem({
         <p className="mt-2 text-sm text-gray-500 italic break-words">
           "{data.comment}"
         </p>
+      )}
+
+      {/* Lightbox for viewing full photo */}
+      {data.photoUrl && (
+        <PhotoLightbox
+          photos={[data.photoUrl]}
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </div>
   );
