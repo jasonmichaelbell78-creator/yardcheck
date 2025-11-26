@@ -65,12 +65,12 @@ export function ChecklistItem({
   };
 
   return (
-    <div className="border-b border-gray-100 py-4 last:border-b-0">
-      <div className="flex items-center justify-between gap-4">
-        <span className="font-medium text-gray-900 flex-shrink-0">
+    <div className="border-b border-gray-100 py-4 last:border-b-0 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+        <span className="font-medium text-gray-900">
           {config.label}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {config.options.map((option) => (
             <Button
               key={option}
@@ -79,7 +79,7 @@ export function ChecklistItem({
               onClick={() => onValueChange(option)}
               disabled={disabled}
               className={cn(
-                'min-w-[60px] text-xs',
+                'min-w-[50px] sm:min-w-[60px] text-xs px-2 sm:px-3',
                 data.value === option && 'ring-2 ring-offset-1'
               )}
             >
@@ -91,7 +91,7 @@ export function ChecklistItem({
             size="icon"
             onClick={() => setShowComment(!showComment)}
             className={cn(
-              'h-8 w-8',
+              'h-8 w-8 flex-shrink-0',
               data.comment && 'text-primary'
             )}
             disabled={disabled}
@@ -102,12 +102,12 @@ export function ChecklistItem({
       </div>
       
       {showComment && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-2 w-full">
           <Textarea
             placeholder="Add a comment..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            className="text-sm min-h-[60px]"
+            className="text-sm min-h-[60px] w-full"
             disabled={disabled}
           />
           <div className="flex gap-2 justify-end">
@@ -137,7 +137,7 @@ export function ChecklistItem({
       )}
       
       {!showComment && data.comment && (
-        <p className="mt-2 text-sm text-gray-500 italic">
+        <p className="mt-2 text-sm text-gray-500 italic break-words">
           "{data.comment}"
         </p>
       )}

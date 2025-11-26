@@ -90,6 +90,31 @@ export async function getInspection(id: string): Promise<Inspection | null> {
   return null;
 }
 
+// Check if there's already an in-progress inspection for this truck
+export async function findInProgressInspectionByTruck(
+  truckNumber: string
+): Promise<Inspection | null> {
+  const sanitizedTruckNumber = sanitizeTruckNumber(truckNumber);
+  
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    where('truckNumber', '==', sanitizedTruckNumber),
+    where('status', '==', 'in-progress')
+  );
+  
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) {
+    return null;
+  }
+  
+  // Return the first (should only be one) in-progress inspection
+  const docSnap = snapshot.docs[0];
+  return {
+    id: docSnap.id,
+    ...docSnap.data()
+  } as Inspection;
+}
+
 // Get in-progress inspections
 export async function getInProgressInspections(): Promise<Inspection[]> {
   const q = query(

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInProgressInspections } from '@/hooks/useInspection';
-import { createInspection } from '@/services/inspectionService';
+import { createInspection, findInProgressInspectionByTruck, addSecondInspector } from '@/services/inspectionService';
 import { validateTruckNumber, normalizeTruckNumber, formatTimestamp } from '@/utils/validation';
 
 export function TruckEntryPage() {
@@ -17,6 +17,7 @@ export function TruckEntryPage() {
   const [truckNumber, setTruckNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [joinMessage, setJoinMessage] = useState('');
 
   const handleBeginInspection = async () => {
     if (!currentInspector) return;
@@ -30,8 +31,27 @@ export function TruckEntryPage() {
 
     setIsSubmitting(true);
     setError('');
+    setJoinMessage('');
 
     try {
+      // Check if there's already an in-progress inspection for this truck
+      const existingInspection = await findInProgressInspectionByTruck(normalizedTruckNumber);
+      
+      if (existingInspection) {
+        // Join the existing inspection instead of creating a new one
+        if (existingInspection.inspector1 !== currentInspector.name &&
+            existingInspection.inspector2 !== currentInspector.name) {
+          await addSecondInspector(existingInspection.id, currentInspector.name);
+        }
+        setJoinMessage(`Joining existing inspection for truck #${normalizedTruckNumber}`);
+        // Small delay to show the message before navigating
+        setTimeout(() => {
+          navigate(`/inspection/${existingInspection.id}`);
+        }, 500);
+        return;
+      }
+      
+      // No existing inspection, create a new one
       const inspectionId = await createInspection(
         normalizedTruckNumber,
         currentInspector.name
@@ -106,12 +126,16 @@ export function TruckEntryPage() {
                 onChange={(e) => {
                   setTruckNumber(e.target.value);
                   setError('');
+                  setJoinMessage('');
                 }}
                 className="text-lg"
                 disabled={isSubmitting}
               />
               {error && (
                 <p className="text-sm text-destructive mt-1">{error}</p>
+              )}
+              {joinMessage && (
+                <p className="text-sm text-primary mt-1">{joinMessage}</p>
               )}
             </div>
             <Button
