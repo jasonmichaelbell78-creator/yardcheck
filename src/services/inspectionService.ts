@@ -326,7 +326,7 @@ export async function updateChecklistItemPhoto(
   
   // Validate itemId - must be camelCase identifier (letters only for this app's schema)
   if (!itemId || !/^[a-zA-Z]+$/.test(itemId)) {
-    throw new Error('Invalid item ID');
+    throw new Error('Invalid item ID: Must contain only letters (a-z, A-Z) in camelCase format');
   }
   
   const docRef = doc(db, COLLECTION_NAME, inspectionId);

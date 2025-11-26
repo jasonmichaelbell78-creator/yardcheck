@@ -7,14 +7,16 @@ const storage = getStorage(app);
 const MAX_WIDTH = 1200;
 const MAX_HEIGHT = 1200;
 const JPEG_QUALITY = 0.8;
+const JPEG_QUALITY_LOW = 0.6;
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
 
 /**
  * Compress an image file using canvas
  * @param file The original image file
+ * @param quality JPEG quality (0-1)
  * @returns Promise resolving to a compressed Blob
  */
-async function compressImage(file: File): Promise<Blob> {
+async function compressImage(file: File, quality: number = JPEG_QUALITY): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -50,16 +52,16 @@ async function compressImage(file: File): Promise<Blob> {
           if (blob) {
             resolve(blob);
           } else {
-            reject(new Error('Failed to compress image'));
+            reject(new Error('Failed to compress image: Browser could not convert canvas to JPEG blob. This may occur with certain image formats.'));
           }
         },
         'image/jpeg',
-        JPEG_QUALITY
+        quality
       );
     };
 
     img.onerror = () => {
-      reject(new Error('Failed to load image'));
+      reject(new Error('Failed to load image: The image file may be corrupted or in an unsupported format'));
     };
 
     // Create object URL from file
@@ -102,19 +104,16 @@ export async function uploadInspectionPhoto(
   validateImageFile(file);
 
   // Compress image before upload
-  const compressedBlob = await compressImage(file);
+  let compressedBlob = await compressImage(file);
   
-  // Verify compressed size is within limits
+  // If still too large, try with lower quality
   if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-    // Try with lower quality
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Failed to get canvas context');
-    }
+    compressedBlob = await compressImage(file, JPEG_QUALITY_LOW);
     
-    // If still too large, throw error
-    throw new Error('Image is too large after compression. Please use a smaller image.');
+    // If still too large after lower quality, throw error
+    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
+      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
+    }
   }
 
   const timestamp = Date.now();
