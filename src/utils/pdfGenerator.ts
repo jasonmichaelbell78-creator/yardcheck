@@ -33,11 +33,23 @@ function getItemData(
   return sectionData[itemId as keyof (InteriorChecklist | ExteriorChecklist)] as ChecklistItemData | undefined;
 }
 
+// PDF layout constants
+const PAGE_HEIGHT_LIMIT = 280;
+const LINE_HEIGHT_MULTIPLIER = 0.4;
+const LINE_SPACING = 4;
+const PHOTO_WIDTH = 60;
+const PHOTO_HEIGHT = 45;
+const PHOTO_LABEL_MAX_LENGTH = 20;
+const PHOTO_LABEL_TRUNCATE_LENGTH = 17;
+
 // Fetch image and convert to base64 data URL
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`Failed to fetch image: ${response.status} ${response.statusText} for URL: ${url}`);
+      return null;
+    }
     
     const blob = await response.blob();
     return new Promise((resolve) => {
@@ -46,17 +58,25 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (err) {
+    console.warn(`Error fetching image from ${url}:`, err);
     return null;
   }
 }
 
-// PDF layout constants
-const PAGE_HEIGHT_LIMIT = 280;
-const LINE_HEIGHT_MULTIPLIER = 0.4;
-const LINE_SPACING = 4;
-const PHOTO_WIDTH = 60;
-const PHOTO_HEIGHT = 45;
+// Extract image format from base64 data URL
+function getImageFormatFromBase64(base64: string): string {
+  const match = base64.match(/^data:image\/(\w+);base64,/);
+  if (match) {
+    const format = match[1].toUpperCase();
+    // jsPDF supports JPEG, PNG, WEBP, GIF
+    if (['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(format)) {
+      return format === 'JPG' ? 'JPEG' : format;
+    }
+  }
+  // Default to JPEG as fallback
+  return 'JPEG';
+}
 
 interface PhotoData {
   label: string;
@@ -220,13 +240,16 @@ export async function generateInspectionPDF(inspection: Inspection): Promise<voi
       const xPos = margin + col * (PHOTO_WIDTH + photoSpacing);
       
       try {
-        doc.addImage(photo.base64, 'JPEG', xPos, yPosition, PHOTO_WIDTH, PHOTO_HEIGHT);
+        const imageFormat = getImageFormatFromBase64(photo.base64);
+        doc.addImage(photo.base64, imageFormat, xPos, yPosition, PHOTO_WIDTH, PHOTO_HEIGHT);
         
         // Add label below photo
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        const truncatedLabel = photo.label.length > 20 ? photo.label.substring(0, 17) + '...' : photo.label;
+        const truncatedLabel = photo.label.length > PHOTO_LABEL_MAX_LENGTH 
+          ? photo.label.substring(0, PHOTO_LABEL_TRUNCATE_LENGTH) + '...' 
+          : photo.label;
         doc.text(truncatedLabel, xPos, yPosition + PHOTO_HEIGHT + 5);
       } catch {
         // If image fails to add, just add the label
