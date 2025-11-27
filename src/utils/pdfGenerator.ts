@@ -185,11 +185,10 @@ export async function generateInspectionPDF(inspection: Inspection): Promise<voi
   // Collect and load all photos
   const allPhotos: PhotoData[] = [];
   
-  // Get exterior item photos
-  const exteriorSection = CHECKLIST_CONFIG.find((s) => s.id === 'exterior');
-  if (exteriorSection) {
-    for (const item of exteriorSection.items) {
-      const itemData = getItemData('exterior', item.id, inspection);
+  // Get photos from all checklist sections (interior and exterior)
+  for (const section of CHECKLIST_CONFIG) {
+    for (const item of section.items) {
+      const itemData = getItemData(section.id, item.id, inspection);
       if (itemData?.photoUrl) {
         const base64 = await fetchImageAsBase64(itemData.photoUrl);
         if (base64) {
