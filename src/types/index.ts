@@ -4,8 +4,18 @@ import { Timestamp } from 'firebase/firestore';
 export interface Inspector {
   id: string;
   name: string;
+  email?: string;
   isAdmin: boolean;
   active: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// Email recipient for notifications
+export interface EmailRecipient {
+  id: string;
+  name: string;
+  email: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

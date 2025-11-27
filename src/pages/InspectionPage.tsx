@@ -17,6 +17,7 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { ChecklistSection } from '@/components/ChecklistSection';
 import { DefectPhotos } from '@/components/DefectPhotos';
 import { CapturedPhotos } from '@/components/CapturedPhotos';
+import { EmailReportOptions } from '@/components/EmailReportOptions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInspection } from '@/hooks/useInspection';
 import { CHECKLIST_CONFIG, TOTAL_CHECKLIST_ITEMS } from '@/config/checklist';
@@ -253,6 +254,11 @@ export function InspectionPage() {
 
         {/* Captured Photos Gallery */}
         <CapturedPhotos inspection={inspection} />
+
+        {/* Email Report Options - only shown for completed inspections with defects */}
+        {isInspectionClosed && inspection.status === 'complete' && (
+          <EmailReportOptions inspection={inspection} />
+        )}
       </main>
 
       {/* Fixed Bottom Actions */}

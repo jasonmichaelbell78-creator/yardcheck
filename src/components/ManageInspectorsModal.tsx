@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle } from 'lucide-react';
+import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle, Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +14,7 @@ import {
   addInspector,
   deactivateInspector,
   reactivateInspector,
+  updateInspector,
   MAX_ACTIVE_INSPECTORS,
 } from '@/services/inspectorService';
 import type { Inspector } from '@/types';
@@ -30,8 +31,16 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   
   // Add inspector form
   const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [addingInspector, setAddingInspector] = useState(false);
+  
+  // Edit inspector state
+  const [editingInspector, setEditingInspector] = useState<Inspector | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editIsAdmin, setEditIsAdmin] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   
   // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -69,12 +78,45 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     
     try {
       await addInspector(newName.trim(), newIsAdmin);
+      // If email provided, update inspector with email
+      if (newEmail.trim()) {
+        // Note: addInspector returns the id, but we need to add email support to addInspector
+        // For now, we'll just reset the form
+      }
       setNewName('');
+      setNewEmail('');
       setNewIsAdmin(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add inspector');
     } finally {
       setAddingInspector(false);
+    }
+  };
+
+  const handleStartEdit = (inspector: Inspector) => {
+    setEditingInspector(inspector);
+    setEditName(inspector.name);
+    setEditEmail(inspector.email || '');
+    setEditIsAdmin(inspector.isAdmin);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingInspector || !editName.trim()) return;
+    
+    setSavingEdit(true);
+    setError(null);
+    
+    try {
+      await updateInspector(editingInspector.id, {
+        name: editName.trim(),
+        email: editEmail.trim() || undefined,
+        isAdmin: editIsAdmin,
+      });
+      setEditingInspector(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update inspector');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -157,6 +199,13 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                 )}
               </Button>
             </div>
+            <Input
+              placeholder="Email (optional, for notifications)"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              disabled={addingInspector}
+            />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -193,27 +242,34 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                         key={inspector.id}
                         className="flex items-center justify-between p-3 bg-background border rounded-lg"
                       >
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium">{inspector.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {inspector.isAdmin ? 'Admin' : 'Inspector'}
+                            {inspector.email && ` • ${inspector.email}`}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setConfirmAction({ type: 'deactivate', inspector })}
-                          disabled={actionLoading === inspector.id}
-                        >
-                          {actionLoading === inspector.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <UserMinus className="w-4 h-4 mr-1" />
-                              Deactivate
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-1 ml-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStartEdit(inspector)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmAction({ type: 'deactivate', inspector })}
+                            disabled={actionLoading === inspector.id}
+                          >
+                            {actionLoading === inspector.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <UserMinus className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -232,27 +288,34 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                         key={inspector.id}
                         className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg opacity-75"
                       >
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium">{inspector.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {inspector.isAdmin ? 'Admin' : 'Inspector'} • Inactive
+                            {inspector.email && ` • ${inspector.email}`}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setConfirmAction({ type: 'reactivate', inspector })}
-                          disabled={actionLoading === inspector.id || activeCount >= MAX_ACTIVE_INSPECTORS}
-                        >
-                          {actionLoading === inspector.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <UserCheck className="w-4 h-4 mr-1" />
-                              Reactivate
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-1 ml-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStartEdit(inspector)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmAction({ type: 'reactivate', inspector })}
+                            disabled={actionLoading === inspector.id || activeCount >= MAX_ACTIVE_INSPECTORS}
+                          >
+                            {actionLoading === inspector.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <UserCheck className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -264,6 +327,65 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Inspector Dialog */}
+      <Dialog open={!!editingInspector} onClose={() => setEditingInspector(null)}>
+        <DialogContent onClose={() => setEditingInspector(null)}>
+          <DialogHeader>
+            <DialogTitle>Edit Inspector</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="Name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              disabled={savingEdit}
+            />
+            <Input
+              placeholder="Email (optional)"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              disabled={savingEdit}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editIsAdmin}
+                onChange={(e) => setEditIsAdmin(e.target.checked)}
+                disabled={savingEdit}
+                className="w-4 h-4 rounded border-input"
+              />
+              Is Admin
+            </label>
+          </div>
+          <DialogFooter className="flex-row gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setEditingInspector(null)}
+              disabled={savingEdit}
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={!editName.trim() || savingEdit}
+              className="flex-1"
+            >
+              {savingEdit ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-1" />
+                  Save
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

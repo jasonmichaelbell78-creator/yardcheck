@@ -25,6 +25,17 @@ service cloud.firestore {
       return request.resource.data.status == resource.data.status;
     }
     
+    // Helper function to validate email recipient data
+    function isValidEmailRecipient() {
+      let data = request.resource.data;
+      return data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.email is string
+        && data.email.size() > 0
+        && data.email.size() <= 254;
+    }
+    
     // Inspectors collection
     // Note: Full authentication will be added in Phase 2
     // Currently allows read for all users (needed for inspector selection)
@@ -32,6 +43,17 @@ service cloud.firestore {
       allow read: if true;
       // Allow writes - in production this should check for admin auth
       allow write: if true;
+    }
+    
+    // Email recipients collection
+    // Note: Full authentication will be added in Phase 2
+    // Currently allows read for all users (needed for email selection)
+    match /emailRecipients/{recipientId} {
+      allow read: if true;
+      // Allow create with validation
+      allow create: if isValidEmailRecipient();
+      // Allow updates and deletes - in production this should check for admin auth
+      allow update, delete: if true;
     }
     
     // Inspections collection

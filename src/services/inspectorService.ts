@@ -139,7 +139,7 @@ export async function reactivateInspector(id: string): Promise<void> {
 }
 
 // Update an inspector
-export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin'>>): Promise<void> {
+export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin' | 'email'>>): Promise<void> {
   const updateData: Record<string, unknown> = {
     updatedAt: Timestamp.now(),
   };
@@ -154,6 +154,20 @@ export async function updateInspector(id: string, data: Partial<Pick<Inspector, 
   
   if (data.isAdmin !== undefined) {
     updateData.isAdmin = data.isAdmin;
+  }
+  
+  if (data.email !== undefined) {
+    const trimmedEmail = data.email.trim();
+    // Allow empty email (to clear it) or validate format
+    if (trimmedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 254) {
+        throw new Error('Invalid email format');
+      }
+      updateData.email = trimmedEmail.toLowerCase();
+    } else {
+      updateData.email = null;
+    }
   }
   
   const docRef = doc(db, COLLECTION_NAME, id);
