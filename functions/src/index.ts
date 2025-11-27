@@ -295,19 +295,44 @@ export const sendInspectionEmail = onCall(
       // Prepare attachments (photos)
       const attachments: Array<{ content: string; filename: string; type: string; disposition: string }> = [];
       
-      if (data.includePhotos && inspection.defectPhotos && inspection.defectPhotos.length > 0) {
-        let photoIndex = 1;
-        for (const photo of inspection.defectPhotos) {
-          const photoData = await downloadPhotoAsBase64(photo.url);
-          if (photoData) {
-            const extension = photoData.type.split('/')[1] || 'jpg';
-            attachments.push({
-              content: photoData.content,
-              filename: `defect_photo_${photoIndex}.${extension}`,
-              type: photoData.type,
-              disposition: 'attachment',
-            });
-            photoIndex++;
+      if (data.includePhotos) {
+        // Add checklist item photos from interior and exterior sections
+        for (const [sectionKey, items] of Object.entries(CHECKLIST_CONFIG)) {
+          const sectionData = sectionKey === 'interior' ? inspection.interior : inspection.exterior;
+          for (const item of items) {
+            const itemData = sectionData[item.id];
+            if (itemData?.photoUrl) {
+              const photoData = await downloadPhotoAsBase64(itemData.photoUrl);
+              if (photoData) {
+                const extension = photoData.type.split('/')[1] || 'jpg';
+                // Use item label as filename prefix for clarity
+                const safeLabel = item.label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                attachments.push({
+                  content: photoData.content,
+                  filename: `${safeLabel}.${extension}`,
+                  type: photoData.type,
+                  disposition: 'attachment',
+                });
+              }
+            }
+          }
+        }
+        
+        // Add defect photos
+        if (inspection.defectPhotos && inspection.defectPhotos.length > 0) {
+          let photoIndex = 1;
+          for (const photo of inspection.defectPhotos) {
+            const photoData = await downloadPhotoAsBase64(photo.url);
+            if (photoData) {
+              const extension = photoData.type.split('/')[1] || 'jpg';
+              attachments.push({
+                content: photoData.content,
+                filename: `defect_photo_${photoIndex}.${extension}`,
+                type: photoData.type,
+                disposition: 'attachment',
+              });
+              photoIndex++;
+            }
           }
         }
       }

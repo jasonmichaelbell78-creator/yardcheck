@@ -21,51 +21,65 @@ async function compressImage(file: File, quality: number = JPEG_QUALITY): Promis
     const img = new Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    
+    // Create object URL - must be revoked to prevent memory leaks
+    const objectUrl = URL.createObjectURL(file);
 
     if (!ctx) {
+      URL.revokeObjectURL(objectUrl);
       reject(new Error('Failed to get canvas context'));
       return;
     }
 
     img.onload = () => {
-      // Calculate new dimensions maintaining aspect ratio
-      let { width, height } = img;
-      
-      if (width > MAX_WIDTH) {
-        height = (height * MAX_WIDTH) / width;
-        width = MAX_WIDTH;
-      }
-      
-      if (height > MAX_HEIGHT) {
-        width = (width * MAX_HEIGHT) / height;
-        height = MAX_HEIGHT;
-      }
+      try {
+        // Calculate new dimensions maintaining aspect ratio
+        let { width, height } = img;
+        
+        if (width > MAX_WIDTH) {
+          height = (height * MAX_WIDTH) / width;
+          width = MAX_WIDTH;
+        }
+        
+        if (height > MAX_HEIGHT) {
+          width = (width * MAX_HEIGHT) / height;
+          height = MAX_HEIGHT;
+        }
 
-      canvas.width = width;
-      canvas.height = height;
+        canvas.width = width;
+        canvas.height = height;
 
-      // Draw and compress
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to compress image: Browser could not convert canvas to JPEG blob. This may occur with certain image formats.'));
-          }
-        },
-        'image/jpeg',
-        quality
-      );
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            // Clean up object URL to prevent memory leaks
+            URL.revokeObjectURL(objectUrl);
+            
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to compress image: Browser could not convert canvas to JPEG blob. This may occur with certain image formats.'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      } catch (error) {
+        // Clean up object URL on error
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
     };
 
     img.onerror = () => {
+      // Clean up object URL on error
+      URL.revokeObjectURL(objectUrl);
       reject(new Error('Failed to load image: The image file may be corrupted or in an unsupported format'));
     };
 
-    // Create object URL from file
-    img.src = URL.createObjectURL(file);
+    img.src = objectUrl;
   });
 }
 

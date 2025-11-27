@@ -122,7 +122,8 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
       return;
     }
 
-    if (selectedItems.length === 0 && !includeAdditionalDefects) {
+    // Only require selected items if there are defects to select from
+    if (hasAnyDefects && selectedItems.length === 0 && !includeAdditionalDefects) {
       setError('Please select at least one item to include');
       return;
     }
@@ -155,11 +156,6 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
     }
   };
 
-  // Don't show if there are no defects
-  if (!hasAnyDefects) {
-    return null;
-  }
-
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">
@@ -169,6 +165,13 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* No defects message */}
+        {!hasAnyDefects && (
+          <p className="text-sm text-muted-foreground">
+            No defects found - send confirmation report?
+          </p>
+        )}
+
         {/* Enable Email Checkbox */}
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -177,7 +180,9 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
             onChange={(e) => setEnableEmail(e.target.checked)}
             className="w-4 h-4 rounded border-gray-300"
           />
-          <span className="text-sm font-medium">Send email notification for defects</span>
+          <span className="text-sm font-medium">
+            {hasAnyDefects ? 'Send email notification for defects' : 'Send confirmation email report'}
+          </span>
         </label>
 
         {/* Email Options (shown when enabled) */}
@@ -278,17 +283,23 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
                 </label>
               )}
               
-              {hasAnyPhotos && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includePhotos}
-                    onChange={(e) => setIncludePhotos(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm">Include photos</span>
-                </label>
-              )}
+              {/* Always show include photos checkbox */}
+              <label className={cn(
+                "flex items-center gap-2",
+                hasAnyPhotos ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+              )}>
+                <input
+                  type="checkbox"
+                  checked={hasAnyPhotos ? includePhotos : false}
+                  onChange={(e) => setIncludePhotos(e.target.checked)}
+                  disabled={!hasAnyPhotos}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <span className="text-sm">
+                  Include photos
+                  {!hasAnyPhotos && <span className="text-muted-foreground"> (no photos attached)</span>}
+                </span>
+              </label>
             </div>
 
             {/* Error/Success Messages */}
