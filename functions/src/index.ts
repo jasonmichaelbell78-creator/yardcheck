@@ -7,6 +7,9 @@ import * as sgMail from '@sendgrid/mail';
 admin.initializeApp();
 const db = admin.firestore();
 
+// Get the default storage bucket for downloading photos
+const storageBucket = admin.storage().bucket();
+
 // Define the SendGrid API key secret
 const sendgridApiKey = defineSecret('SENDGRID_API_KEY');
 
@@ -215,12 +218,15 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Download a photo and convert to base64 for email attachment
+ * Download a photo using fetch (fallback method)
  */
-async function downloadPhotoAsBase64(url: string): Promise<{ content: string; type: string } | null> {
+async function fetchPhotoAsBase64(url: string): Promise<{ content: string; type: string } | null> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error('Fetch failed:', response.status, response.statusText);
+      return null;
+    }
     
     const buffer = await response.arrayBuffer();
     const base64 = Buffer.from(buffer).toString('base64');
@@ -231,8 +237,58 @@ async function downloadPhotoAsBase64(url: string): Promise<{ content: string; ty
       type: contentType,
     };
   } catch (error) {
-    console.error('Failed to download photo:', error);
+    console.error('Failed to fetch photo:', error);
     return null;
+  }
+}
+
+/**
+ * Download a photo and convert to base64 for email attachment
+ * Uses Firebase Admin SDK to download directly from Storage, with fetch as fallback
+ */
+async function downloadPhotoAsBase64(url: string): Promise<{ content: string; type: string } | null> {
+  try {
+    // Try to extract file path from Firebase Storage URL
+    // URLs look like: https://firebasestorage.googleapis.com/v0/b/BUCKET/o/PATH?token=XXX
+    const urlObj = new URL(url);
+    
+    // Handle both firebasestorage.googleapis.com and storage.googleapis.com URLs
+    let filePath: string | null = null;
+    
+    if (urlObj.hostname.includes('firebasestorage.googleapis.com')) {
+      // Extract path from /v0/b/bucket/o/encoded-path format
+      const match = urlObj.pathname.match(/\/v0\/b\/[^/]+\/o\/(.+)/);
+      if (match) {
+        filePath = decodeURIComponent(match[1]);
+      }
+    } else if (urlObj.hostname.includes('storage.googleapis.com')) {
+      // Direct storage URL format
+      const pathParts = urlObj.pathname.split('/').slice(2); // Remove bucket name
+      filePath = pathParts.join('/');
+    }
+    
+    if (!filePath) {
+      console.error('Could not parse storage URL:', url);
+      // Fallback to fetch method
+      return await fetchPhotoAsBase64(url);
+    }
+    
+    const file = storageBucket.file(filePath);
+    const [buffer] = await file.download();
+    const base64 = buffer.toString('base64');
+    
+    // Get content type from metadata
+    const [metadata] = await file.getMetadata();
+    const contentType = (metadata.contentType as string) || 'image/jpeg';
+    
+    return {
+      content: base64,
+      type: contentType,
+    };
+  } catch (error) {
+    console.error('Failed to download photo via Admin SDK, trying fetch:', error);
+    // Fallback to original fetch method
+    return await fetchPhotoAsBase64(url);
   }
 }
 

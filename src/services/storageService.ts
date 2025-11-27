@@ -4,10 +4,11 @@ import app from '@/config/firebase';
 const storage = getStorage(app);
 
 // Maximum image dimensions and quality settings
-const MAX_WIDTH = 1200;
-const MAX_HEIGHT = 1200;
-const JPEG_QUALITY = 0.8;
-const JPEG_QUALITY_LOW = 0.6;
+// Reduced from 1200 to 800 for better memory handling on mobile devices
+const MAX_WIDTH = 800;
+const MAX_HEIGHT = 800;
+const JPEG_QUALITY = 0.7;
+const JPEG_QUALITY_LOW = 0.5;
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
 
 /**
@@ -84,6 +85,30 @@ async function compressImage(file: File, quality: number = JPEG_QUALITY): Promis
 }
 
 /**
+ * Compress an image safely with fallback to original if compression fails
+ * This handles memory issues on low-memory devices
+ * @param file The original image file
+ * @returns Promise resolving to a compressed Blob (or original file as fallback)
+ */
+async function compressImageSafely(file: File): Promise<Blob> {
+  try {
+    // Try normal compression
+    let blob = await compressImage(file, JPEG_QUALITY);
+    
+    if (blob.size > MAX_FILE_SIZE_BYTES) {
+      // If still too large, try with lower quality
+      blob = await compressImage(file, JPEG_QUALITY_LOW);
+    }
+    
+    return blob;
+  } catch (error) {
+    console.warn('[PhotoUpload] Image compression failed, using original:', error);
+    // Return original file as blob if compression fails (memory issues)
+    return file;
+  }
+}
+
+/**
  * Validate file is an image and within size limits
  * @param file The file to validate
  */
@@ -110,6 +135,8 @@ export async function uploadInspectionPhoto(
   itemId: string,
   file: File
 ): Promise<string> {
+  console.log(`[PhotoUpload] Starting upload for inspection ${inspectionId}, item ${itemId}, file size: ${file.size} bytes`);
+  
   // Validate inputs
   if (!inspectionId || !itemId) {
     throw new Error('Invalid inspection or item ID');
@@ -117,17 +144,14 @@ export async function uploadInspectionPhoto(
   
   validateImageFile(file);
 
-  // Compress image before upload
-  let compressedBlob = await compressImage(file);
+  // Compress image before upload with safe fallback
+  console.log(`[PhotoUpload] Compressing image...`);
+  const compressedBlob = await compressImageSafely(file);
+  console.log(`[PhotoUpload] Compressed size: ${compressedBlob.size} bytes`);
   
-  // If still too large, try with lower quality
+  // If still too large after compression, throw error
   if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-    compressedBlob = await compressImage(file, JPEG_QUALITY_LOW);
-    
-    // If still too large after lower quality, throw error
-    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
-    }
+    throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
   }
 
   const timestamp = Date.now();
@@ -138,7 +162,9 @@ export async function uploadInspectionPhoto(
     contentType: 'image/jpeg',
   });
 
-  return await getDownloadURL(storageRef);
+  const url = await getDownloadURL(storageRef);
+  console.log(`[PhotoUpload] Upload complete, URL: ${url}`);
+  return url;
 }
 
 /**
@@ -151,6 +177,8 @@ export async function uploadDefectPhoto(
   inspectionId: string,
   file: File
 ): Promise<string> {
+  console.log(`[PhotoUpload] Starting defect photo upload for inspection ${inspectionId}, file size: ${file.size} bytes`);
+  
   // Validate inputs
   if (!inspectionId) {
     throw new Error('Invalid inspection ID');
@@ -158,17 +186,14 @@ export async function uploadDefectPhoto(
   
   validateImageFile(file);
 
-  // Compress image before upload
-  let compressedBlob = await compressImage(file);
+  // Compress image before upload with safe fallback
+  console.log(`[PhotoUpload] Compressing image...`);
+  const compressedBlob = await compressImageSafely(file);
+  console.log(`[PhotoUpload] Compressed size: ${compressedBlob.size} bytes`);
   
-  // If still too large, try with lower quality
+  // If still too large after compression, throw error
   if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-    compressedBlob = await compressImage(file, JPEG_QUALITY_LOW);
-    
-    // If still too large after lower quality, throw error
-    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
-    }
+    throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
   }
 
   const timestamp = Date.now();
@@ -179,7 +204,9 @@ export async function uploadDefectPhoto(
     contentType: 'image/jpeg',
   });
 
-  return await getDownloadURL(storageRef);
+  const url = await getDownloadURL(storageRef);
+  console.log(`[PhotoUpload] Upload complete, URL: ${url}`);
+  return url;
 }
 
 /**

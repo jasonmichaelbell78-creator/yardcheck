@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, Loader2, CheckCircle, Eye, Trash2 } from 'lucide-react';
+import { Plus, Loader2, CheckCircle, Eye, Trash2, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
@@ -196,9 +196,20 @@ export function DefectPhotos({
         </Button>
       )}
 
-      {/* Error message */}
+      {/* Error message - dismissible */}
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <div className="flex items-center justify-between p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={() => setError(null)}
+            className="text-destructive hover:text-destructive/80"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {/* Lightbox - only loads images when opened */}
