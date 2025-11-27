@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Plus, Clock, Users, LogOut } from 'lucide-react';
+import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { InspectionDetailModal } from '@/components/InspectionDetailModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInProgressInspections } from '@/hooks/useInspection';
-import { createInspection, findInProgressInspectionByTruck, addSecondInspector } from '@/services/inspectionService';
+import { createInspection, findInProgressInspectionByTruck, addSecondInspector, getInspectorInspections } from '@/services/inspectionService';
 import { validateTruckNumber, normalizeTruckNumber, formatTimestamp } from '@/utils/validation';
+import type { Inspection } from '@/types';
+
+// Calculate default date range (last 7 days) - outside component to avoid recreation
+function getDefaultDates() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 7);
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
+  };
+}
 
 export function TruckEntryPage() {
   const navigate = useNavigate();
@@ -18,6 +31,106 @@ export function TruckEntryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [joinMessage, setJoinMessage] = useState('');
+  
+  // History state
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyInspections, setHistoryInspections] = useState<Inspection[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyStartDate, setHistoryStartDate] = useState('');
+  const [historyEndDate, setHistoryEndDate] = useState('');
+  const [historyTruckFilter, setHistoryTruckFilter] = useState('');
+  const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // Track the inspector name for which history was loaded
+  const lastLoadedInspectorRef = useRef<string | null>(null);
+
+  // Load history when section is opened for the first time or when inspector changes
+  useEffect(() => {
+    if (showHistory && currentInspector) {
+      const inspectorName = currentInspector.name;
+      const shouldReload = lastLoadedInspectorRef.current !== inspectorName;
+      
+      // Set default dates and load on first open or when inspector changes
+      const loadInitialHistory = async () => {
+        // Set default dates
+        const defaults = getDefaultDates();
+        setHistoryStartDate(defaults.start);
+        setHistoryEndDate(defaults.end);
+        
+        // Load history with default dates
+        setHistoryLoading(true);
+        setHistoryError(null);
+        
+        try {
+          const startDate = new Date(defaults.start);
+          const endDate = new Date(defaults.end);
+          
+          const results = await getInspectorInspections(
+            inspectorName,
+            startDate,
+            endDate
+          );
+          setHistoryInspections(results);
+          lastLoadedInspectorRef.current = inspectorName;
+        } catch (err) {
+          console.error('Error loading history:', err);
+          setHistoryError('Failed to load inspection history');
+        } finally {
+          setHistoryLoading(false);
+        }
+      };
+      
+      // Load if we haven't loaded before or if inspector changed
+      if ((historyInspections.length === 0 && !historyLoading) || shouldReload) {
+        loadInitialHistory();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHistory, currentInspector?.name]);
+
+  const loadHistory = async () => {
+    if (!currentInspector) return;
+    
+    setHistoryLoading(true);
+    setHistoryError(null);
+    
+    try {
+      const startDate = historyStartDate ? new Date(historyStartDate) : undefined;
+      const endDate = historyEndDate ? new Date(historyEndDate) : undefined;
+      
+      const results = await getInspectorInspections(
+        currentInspector.name,
+        startDate,
+        endDate
+      );
+      setHistoryInspections(results);
+    } catch (err) {
+      console.error('Error loading history:', err);
+      setHistoryError('Failed to load inspection history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Filter history inspections by truck number
+  const filteredHistoryInspections = useMemo(() => {
+    if (!historyTruckFilter.trim()) return historyInspections;
+    const filter = historyTruckFilter.toLowerCase();
+    return historyInspections.filter(i => 
+      i.truckNumber.toLowerCase().includes(filter)
+    );
+  }, [historyInspections, historyTruckFilter]);
+
+  const handleApplyHistoryFilters = () => {
+    loadHistory();
+  };
+
+  const handleViewInspection = (inspection: Inspection) => {
+    setSelectedInspection(inspection);
+    setShowDetailModal(true);
+  };
 
   const handleBeginInspection = async () => {
     if (!currentInspector) return;
@@ -205,7 +318,139 @@ export function TruckEntryPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Inspection History */}
+        <Card className="mt-6">
+          <CardHeader 
+            className="cursor-pointer"
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                My Inspection History
+              </div>
+              {showHistory ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              )}
+            </CardTitle>
+            <CardDescription>
+              View your completed inspections
+            </CardDescription>
+          </CardHeader>
+          
+          {showHistory && (
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={historyStartDate}
+                    onChange={(e) => setHistoryStartDate(e.target.value)}
+                    className="w-auto"
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                    type="date"
+                    value={historyEndDate}
+                    onChange={(e) => setHistoryEndDate(e.target.value)}
+                    className="w-auto"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Filter by truck #"
+                    value={historyTruckFilter}
+                    onChange={(e) => setHistoryTruckFilter(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleApplyHistoryFilters}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? 'Loading...' : 'Apply Filters'}
+                </Button>
+              </div>
+
+              {/* Error message */}
+              {historyError && (
+                <p className="text-sm text-destructive">{historyError}</p>
+              )}
+
+              {/* History list */}
+              {historyLoading ? (
+                <p className="text-center text-muted-foreground py-4">
+                  Loading history...
+                </p>
+              ) : filteredHistoryInspections.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  No inspections found for the selected period
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredHistoryInspections.map((inspection) => (
+                    <div
+                      key={inspection.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => handleViewInspection(inspection)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold">
+                            Truck #{inspection.truckNumber}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <span className={`px-2 py-0.5 rounded-full ${
+                              inspection.status === 'complete' 
+                                ? 'bg-green-100 text-green-800'
+                                : inspection.status === 'gone'
+                                ? 'bg-gray-100 text-gray-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {inspection.status}
+                            </span>
+                            <span>
+                              {formatTimestamp(inspection.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewInspection(inspection);
+                          }}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
       </main>
+
+      {/* Inspection Detail Modal */}
+      <InspectionDetailModal
+        inspection={selectedInspection}
+        open={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedInspection(null);
+        }}
+      />
     </div>
   );
 }

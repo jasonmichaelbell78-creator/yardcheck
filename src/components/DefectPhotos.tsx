@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, X, Loader2, CheckCircle, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
@@ -141,7 +141,15 @@ export function DefectPhotos({
         </div>
       )}
 
-      {/* Photo grid */}
+      {/* Photo count indicator */}
+      {photos.length > 0 && (
+        <div className="flex items-center gap-2 text-sm text-green-600">
+          <CheckCircle className="w-4 h-4" />
+          <span>{photos.length} photo{photos.length !== 1 ? 's' : ''} captured</span>
+        </div>
+      )}
+
+      {/* Photo grid - uses simple placeholders for performance, click to view */}
       <div className="flex flex-wrap gap-2">
         {photos.map((photo, index) => (
           <div key={photo.url} className="relative group">
@@ -151,14 +159,11 @@ export function DefectPhotos({
               className={cn(
                 'w-[60px] h-[60px] rounded-md overflow-hidden border border-gray-200',
                 'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
-                'cursor-pointer hover:opacity-90'
+                'cursor-pointer hover:opacity-90 bg-gray-100 flex items-center justify-center'
               )}
+              title={photo.caption || `View defect photo ${index + 1}`}
             >
-              <img
-                src={photo.url}
-                alt={photo.caption || `Defect photo ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
+              <Image className="w-6 h-6 text-gray-400" />
             </button>
 
             {/* Delete button overlay */}

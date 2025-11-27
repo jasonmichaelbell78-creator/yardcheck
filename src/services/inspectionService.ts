@@ -12,12 +12,15 @@ import {
   Timestamp,
   arrayUnion,
   arrayRemove,
+  limit,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Inspection, ChecklistItemData, DefectPhoto } from '@/types';
 import { createNewInspection } from '@/config/checklist';
 
 const COLLECTION_NAME = 'inspections';
+// Limit for inspector history queries to prevent loading too much data
+const INSPECTOR_HISTORY_LIMIT = 200;
 
 // Input validation constants
 const MAX_TRUCK_NUMBER_LENGTH = 50;
@@ -378,4 +381,57 @@ export async function removeDefectPhoto(
       updatedAt: Timestamp.now(),
     });
   }
+}
+
+// Get inspections for a specific inspector (completed or all)
+// Note: Firestore doesn't support OR queries across different fields (inspector1 OR inspector2),
+// so we query recent inspections and filter client-side. The limit prevents loading too much data.
+export async function getInspectorInspections(
+  inspectorName: string,
+  startDate?: Date,
+  endDate?: Date
+): Promise<Inspection[]> {
+  const validatedInspectorName = validateInspectorName(inspectorName);
+  
+  // Build the query with a limit to prevent loading too much data
+  // We filter client-side because Firestore doesn't support OR queries on different fields
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    orderBy('createdAt', 'desc'),
+    limit(INSPECTOR_HISTORY_LIMIT)
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  const inspections = snapshot.docs
+    .map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    } as Inspection))
+    .filter(inspection => {
+      // Filter by inspector
+      const isInspector = inspection.inspector1 === validatedInspectorName || 
+                         inspection.inspector2 === validatedInspectorName;
+      if (!isInspector) return false;
+      
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        // Firestore Timestamp objects have a toDate method
+        const timestamp = inspection.createdAt;
+        if (!timestamp || typeof timestamp.toDate !== 'function') return false;
+        
+        const inspectionDate = timestamp.toDate();
+        
+        if (startDate && inspectionDate < startDate) return false;
+        if (endDate) {
+          const endOfDay = new Date(endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (inspectionDate > endOfDay) return false;
+        }
+      }
+      
+      return true;
+    });
+  
+  return inspections;
 }
