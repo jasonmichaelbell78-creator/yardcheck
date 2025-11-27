@@ -22,6 +22,9 @@ interface DefectItem {
   hasPhoto: boolean;
 }
 
+// Defect status values - items with these values are considered defects/issues
+const DEFECT_STATUSES = ['no', 'out-of-date', 'added'] as const;
+
 // Get items that are considered defects/issues
 function getDefectItems(inspection: Inspection): DefectItem[] {
   const defects: DefectItem[] = [];
@@ -36,10 +39,7 @@ function getDefectItems(inspection: Inspection): DefectItem[] {
       if (!itemData || !itemData.value) continue;
       
       // Check if this is a failed/flagged item
-      const isFailed = 
-        itemData.value === 'no' || 
-        itemData.value === 'out-of-date' || 
-        itemData.value === 'added';
+      const isFailed = DEFECT_STATUSES.includes(itemData.value as typeof DEFECT_STATUSES[number]);
       
       if (isFailed) {
         defects.push({
@@ -128,8 +128,13 @@ export function EmailReportOptions({ inspection, onEmailSent }: EmailReportOptio
       return;
     }
     
-    if (selectedItems.length === 0 && !includeAdditionalDefects) {
-      setError('Please select at least one item to include');
+    // Check if there's any content to include
+    const hasSelectedItems = selectedItems.length > 0;
+    const hasAdditionalDefectsToInclude = includeAdditionalDefects && hasAdditionalDefects;
+    const hasPhotosToInclude = includePhotos && hasDefectPhotos;
+    
+    if (!hasSelectedItems && !hasAdditionalDefectsToInclude && !hasPhotosToInclude) {
+      setError('Please select at least one item, include additional defects, or include photos');
       return;
     }
     

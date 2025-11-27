@@ -73,11 +73,16 @@ const CHECKLIST_LABELS: Record<string, string> = {
 async function downloadImage(url: string): Promise<{ content: string; type: string } | null> {
   try {
     // Extract bucket and path from Firebase Storage URL
+    // Expected format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}
     const urlObj = new URL(url);
     const pathMatch = urlObj.pathname.match(/\/b\/([^/]+)\/o\/(.+)/);
     
     if (!pathMatch) {
-      console.error("Invalid Firebase Storage URL format:", url);
+      console.error(
+        "Invalid Firebase Storage URL format. Expected format: " +
+        "https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}. " +
+        "Received:", url
+      );
       return null;
     }
     

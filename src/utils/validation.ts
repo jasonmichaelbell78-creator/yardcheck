@@ -1,5 +1,11 @@
 // Validation utilities for the YardCheck app
 
+// Validate email format
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // Validate truck number format
 export function validateTruckNumber(truckNumber: string): boolean {
   // Truck number should not be empty and should be alphanumeric

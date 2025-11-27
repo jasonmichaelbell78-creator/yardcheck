@@ -11,11 +11,13 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { isValidEmail } from '@/utils/validation';
 import type { Inspector } from '@/types';
 
 const COLLECTION_NAME = 'inspectors';
 export const MAX_ACTIVE_INSPECTORS = 20;
 const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254; // RFC 5321 limit
 
 // Get all active inspectors
 export async function getActiveInspectors(): Promise<Inspector[]> {
@@ -136,14 +138,6 @@ export async function reactivateInspector(id: string): Promise<void> {
     active: true,
     updatedAt: Timestamp.now(),
   });
-}
-
-const MAX_EMAIL_LENGTH = 254; // RFC 5321 limit
-
-// Validate email format
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
 }
 
 // Update an inspector

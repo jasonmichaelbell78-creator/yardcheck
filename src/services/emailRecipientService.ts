@@ -11,17 +11,12 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { isValidEmail } from '@/utils/validation';
 import type { EmailRecipient } from '@/types';
 
 const COLLECTION_NAME = 'emailRecipients';
 const MAX_NAME_LENGTH = 100;
 const MAX_EMAIL_LENGTH = 254; // RFC 5321 limit
-
-// Validate email format
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
 
 // Get all email recipients
 export async function getEmailRecipients(): Promise<EmailRecipient[]> {
