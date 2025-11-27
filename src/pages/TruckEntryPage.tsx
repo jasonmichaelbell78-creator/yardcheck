@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,17 @@ import { useInProgressInspections } from '@/hooks/useInspection';
 import { createInspection, findInProgressInspectionByTruck, addSecondInspector, getInspectorInspections } from '@/services/inspectionService';
 import { validateTruckNumber, normalizeTruckNumber, formatTimestamp } from '@/utils/validation';
 import type { Inspection } from '@/types';
+
+// Calculate default date range (last 7 days) - outside component to avoid recreation
+function getDefaultDates() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 7);
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
+  };
+}
 
 export function TruckEntryPage() {
   const navigate = useNavigate();
@@ -31,22 +42,17 @@ export function TruckEntryPage() {
   const [historyTruckFilter, setHistoryTruckFilter] = useState('');
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // Track the inspector name for which history was loaded
+  const lastLoadedInspectorRef = useRef<string | null>(null);
 
-  // Calculate default date range (last 7 days)
-  const getDefaultDates = () => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 7);
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
-    };
-  };
-
-  // Load history when section is opened for the first time
+  // Load history when section is opened for the first time or when inspector changes
   useEffect(() => {
     if (showHistory && currentInspector) {
-      // Set default dates and load on first open
+      const inspectorName = currentInspector.name;
+      const shouldReload = lastLoadedInspectorRef.current !== inspectorName;
+      
+      // Set default dates and load on first open or when inspector changes
       const loadInitialHistory = async () => {
         // Set default dates
         const defaults = getDefaultDates();
@@ -62,11 +68,12 @@ export function TruckEntryPage() {
           const endDate = new Date(defaults.end);
           
           const results = await getInspectorInspections(
-            currentInspector.name,
+            inspectorName,
             startDate,
             endDate
           );
           setHistoryInspections(results);
+          lastLoadedInspectorRef.current = inspectorName;
         } catch (err) {
           console.error('Error loading history:', err);
           setHistoryError('Failed to load inspection history');
@@ -75,8 +82,8 @@ export function TruckEntryPage() {
         }
       };
       
-      // Only load if we haven't loaded before
-      if (historyInspections.length === 0 && !historyLoading) {
+      // Load if we haven't loaded before or if inspector changed
+      if ((historyInspections.length === 0 && !historyLoading) || shouldReload) {
         loadInitialHistory();
       }
     }
