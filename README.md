@@ -165,10 +165,12 @@ Go to your repository Settings > Secrets and variables > Actions > New repositor
 | `VITE_FIREBASE_API_KEY` | Firebase API key |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth domain (e.g., `yardcheck-543d0.firebaseapp.com`) |
 | `VITE_FIREBASE_PROJECT_ID` | Firebase project ID (e.g., `yardcheck-543d0`) |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket (e.g., `yardcheck-543d0.appspot.com`) |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket (e.g., `yardcheck-543d0.appspot.com`) - **Required for photo uploads** |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
 | `VITE_FIREBASE_APP_ID` | Firebase app ID |
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase service account JSON (see below) |
+
+> **Note:** The `VITE_FIREBASE_STORAGE_BUCKET` secret must be set for photo uploads to work. Without this, photos cannot be saved during inspections.
 
 **To get the Firebase Service Account:**
 
@@ -176,6 +178,15 @@ Go to your repository Settings > Secrets and variables > Actions > New repositor
 2. Click "Generate new private key"
 3. Copy the entire JSON content
 4. Paste it as the value for `FIREBASE_SERVICE_ACCOUNT` secret
+
+**What gets deployed automatically:**
+
+When you push to the `main` branch, the GitHub Action will:
+1. Build the app
+2. Deploy Firestore security rules
+3. Deploy Storage security rules (enables photo uploads)
+4. Deploy Cloud Functions (enables email with photo attachments)
+5. Deploy to Firebase Hosting
 
 **To seed inspectors:**
 
