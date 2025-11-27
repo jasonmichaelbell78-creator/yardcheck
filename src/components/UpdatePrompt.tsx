@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, X, Loader2 } from 'lucide-react';
 
 export function UpdatePrompt() {
   const [isUpdating, setIsUpdating] = useState(false);
+  const isUpdatingRef = useRef(false);
   
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -24,8 +25,9 @@ export function UpdatePrompt() {
   });
 
   const handleUpdate = useCallback(async () => {
-    if (isUpdating) return;
+    if (isUpdatingRef.current) return;
     
+    isUpdatingRef.current = true;
     setIsUpdating(true);
     try {
       // Update the service worker - passing true tells it to reload immediately
@@ -37,11 +39,12 @@ export function UpdatePrompt() {
       }, 2000);
     } catch (error) {
       console.error('Failed to update service worker:', error);
+      isUpdatingRef.current = false;
       setIsUpdating(false);
       // Try to reload anyway to get the new version
       window.location.reload();
     }
-  }, [isUpdating, updateServiceWorker]);
+  }, [updateServiceWorker]);
 
   const close = useCallback(() => {
     setNeedRefresh(false);
