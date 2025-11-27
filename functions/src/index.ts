@@ -253,17 +253,20 @@ async function downloadPhotoAsBase64(url: string): Promise<{ content: string; ty
     const urlObj = new URL(url);
     
     // Handle both firebasestorage.googleapis.com and storage.googleapis.com URLs
+    // Use strict hostname matching to prevent subdomain attacks
     let filePath: string | null = null;
     
-    if (urlObj.hostname.includes('firebasestorage.googleapis.com')) {
+    if (urlObj.hostname === 'firebasestorage.googleapis.com') {
       // Extract path from /v0/b/bucket/o/encoded-path format
       const match = urlObj.pathname.match(/\/v0\/b\/[^/]+\/o\/(.+)/);
       if (match) {
         filePath = decodeURIComponent(match[1]);
       }
-    } else if (urlObj.hostname.includes('storage.googleapis.com')) {
-      // Direct storage URL format
-      const pathParts = urlObj.pathname.split('/').slice(2); // Remove bucket name
+    } else if (urlObj.hostname === 'storage.googleapis.com') {
+      // Direct storage URL format: /BUCKET_NAME/path/to/file
+      // pathname starts with '/' so split gives ['', 'bucket', 'path', 'to', 'file']
+      // We skip first 2 elements (empty string and bucket name) to get the file path
+      const pathParts = urlObj.pathname.split('/').slice(2);
       filePath = pathParts.join('/');
     }
     
