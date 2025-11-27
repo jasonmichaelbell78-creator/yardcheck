@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import * as sgMail from '@sendgrid/mail';
 
@@ -9,6 +9,10 @@ const db = admin.firestore();
 
 // Define the SendGrid API key secret
 const sendgridApiKey = defineSecret('SENDGRID_API_KEY');
+
+// Define the from email address (can be configured via Firebase environment config)
+// Default: noreply@yardcheck.app
+const fromEmailAddress = defineString('FROM_EMAIL', { default: 'noreply@yardcheck.app' });
 
 // Types
 interface DefectPhoto {
@@ -278,22 +282,8 @@ export const sendInspectionEmail = onCall(
         ...inspectionDoc.data(),
       } as Inspection;
       
-      // Find inspector email (for from address)
-      let fromEmail = 'noreply@yardcheck.app'; // Default from address
-      const inspectorDoc = await db
-        .collection('inspectors')
-        .where('name', '==', inspection.inspector1)
-        .limit(1)
-        .get();
-      
-      if (!inspectorDoc.empty) {
-        const inspectorData = inspectorDoc.docs[0].data();
-        if (inspectorData.email) {
-          // Note: SendGrid requires verified sender addresses
-          // Using the inspector email as reply-to instead
-          fromEmail = 'noreply@yardcheck.app';
-        }
-      }
+      // Get the from email address from configuration
+      const fromEmail = fromEmailAddress.value();
       
       // Generate email content
       const htmlBody = generateEmailBody(

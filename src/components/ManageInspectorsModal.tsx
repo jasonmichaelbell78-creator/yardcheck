@@ -77,12 +77,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     setError(null);
     
     try {
-      await addInspector(newName.trim(), newIsAdmin);
-      // If email provided, update inspector with email
-      if (newEmail.trim()) {
-        // Note: addInspector returns the id, but we need to add email support to addInspector
-        // For now, we'll just reset the form
-      }
+      await addInspector(newName.trim(), newIsAdmin, newEmail.trim() || undefined);
       setNewName('');
       setNewEmail('');
       setNewIsAdmin(false);
