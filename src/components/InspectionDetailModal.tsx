@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { EmailReportOptions } from '@/components/EmailReportOptions';
 import type { Inspection, ChecklistItemData, InteriorChecklist, ExteriorChecklist } from '@/types';
 import { CHECKLIST_CONFIG } from '@/config/checklist';
 import { generateInspectionPDF } from '@/utils/pdfGenerator';
@@ -280,6 +281,11 @@ export function InspectionDetailModal({ inspection, open, onClose, onStatusChang
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* Email Report Options - available for completed inspections */}
+          {inspection.status === 'complete' && (
+            <EmailReportOptions inspection={inspection} />
           )}
         </div>
       </DialogContent>

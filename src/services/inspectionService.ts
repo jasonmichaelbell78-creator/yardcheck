@@ -379,3 +379,50 @@ export async function removeDefectPhoto(
     });
   }
 }
+
+// Get inspections for a specific inspector (completed or all)
+export async function getInspectorInspections(
+  inspectorName: string,
+  startDate?: Date,
+  endDate?: Date
+): Promise<Inspection[]> {
+  const validatedInspectorName = validateInspectorName(inspectorName);
+  
+  // Build the query - we need to get all inspections and filter client-side
+  // because Firestore doesn't support OR queries on different fields
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    orderBy('createdAt', 'desc')
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  const inspections = snapshot.docs
+    .map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Inspection))
+    .filter(inspection => {
+      // Filter by inspector
+      const isInspector = inspection.inspector1 === validatedInspectorName || 
+                         inspection.inspector2 === validatedInspectorName;
+      if (!isInspector) return false;
+      
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        const inspectionDate = inspection.createdAt?.toDate?.();
+        if (!inspectionDate) return false;
+        
+        if (startDate && inspectionDate < startDate) return false;
+        if (endDate) {
+          const endOfDay = new Date(endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (inspectionDate > endOfDay) return false;
+        }
+      }
+      
+      return true;
+    });
+  
+  return inspections;
+}

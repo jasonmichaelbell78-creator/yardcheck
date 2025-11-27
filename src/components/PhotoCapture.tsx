@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, X, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
 
@@ -127,6 +127,13 @@ export function PhotoCapture({
             </button>
           )}
         </div>
+      )}
+
+      {/* Photo captured indicator */}
+      {existingPhotoUrl && (
+        <span title="Photo captured">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+        </span>
       )}
 
       {/* Camera button */}
