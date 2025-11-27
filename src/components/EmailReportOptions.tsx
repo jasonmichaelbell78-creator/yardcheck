@@ -59,6 +59,25 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
 
   const hasAdditionalDefects = !!inspection.additionalDefects?.trim();
   const hasDefectPhotos = (inspection.defectPhotos?.length || 0) > 0;
+  
+  // Check if there are any item photos from checklist items (interior or exterior)
+  const hasItemPhotos = useMemo(() => {
+    for (const section of CHECKLIST_CONFIG) {
+      for (const item of section.items) {
+        const data = section.id === 'interior'
+          ? (inspection.interior[item.id as keyof typeof inspection.interior] as ChecklistItemData | undefined)
+          : (inspection.exterior[item.id as keyof typeof inspection.exterior] as ChecklistItemData | undefined);
+        
+        if (data?.photoUrl) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [inspection]);
+  
+  // Has any photos (defect photos or item photos)
+  const hasAnyPhotos = hasDefectPhotos || hasItemPhotos;
   const hasAnyDefects = defectItems.length > 0 || hasAdditionalDefects;
 
   // Load recipients when email is enabled
@@ -266,7 +285,7 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
                 </label>
               )}
               
-              {hasDefectPhotos && (
+              {hasAnyPhotos && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -274,7 +293,7 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
                     onChange={(e) => setIncludePhotos(e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300"
                   />
-                  <span className="text-sm">Include defect photos as attachments</span>
+                  <span className="text-sm">Include photos</span>
                 </label>
               )}
             </div>
