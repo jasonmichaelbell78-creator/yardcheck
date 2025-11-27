@@ -32,9 +32,10 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Get items with issues (not OK or has comment) - memoized for stable reference
-  const defectItems = useMemo<DefectItem[]>(() => {
+  // Get items with issues (not OK or has comment) and check for item photos - memoized for stable reference
+  const { defectItems, hasItemPhotos } = useMemo(() => {
     const items: DefectItem[] = [];
+    let foundItemPhoto = false;
     
     for (const section of CHECKLIST_CONFIG) {
       for (const item of section.items) {
@@ -42,23 +43,34 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
           ? (inspection.interior[item.id as keyof typeof inspection.interior] as ChecklistItemData | undefined)
           : (inspection.exterior[item.id as keyof typeof inspection.exterior] as ChecklistItemData | undefined);
         
-        if (data && (data.value !== 'OK' || data.comment)) {
-          items.push({
-            id: `${section.id}.${item.id}`,
-            section: section.id,
-            label: item.label,
-            value: data.value || 'Not answered',
-            comment: data.comment || '',
-          });
+        if (data) {
+          // Check for item photos
+          if (data.photoUrl) {
+            foundItemPhoto = true;
+          }
+          
+          // Check for defect items
+          if (data.value !== 'OK' || data.comment) {
+            items.push({
+              id: `${section.id}.${item.id}`,
+              section: section.id,
+              label: item.label,
+              value: data.value || 'Not answered',
+              comment: data.comment || '',
+            });
+          }
         }
       }
     }
     
-    return items;
+    return { defectItems: items, hasItemPhotos: foundItemPhoto };
   }, [inspection]);
 
   const hasAdditionalDefects = !!inspection.additionalDefects?.trim();
   const hasDefectPhotos = (inspection.defectPhotos?.length || 0) > 0;
+  
+  // Has any photos (defect photos or item photos)
+  const hasAnyPhotos = hasDefectPhotos || hasItemPhotos;
   const hasAnyDefects = defectItems.length > 0 || hasAdditionalDefects;
 
   // Load recipients when email is enabled
@@ -266,7 +278,7 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
                 </label>
               )}
               
-              {hasDefectPhotos && (
+              {hasAnyPhotos && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -274,7 +286,7 @@ export function EmailReportOptions({ inspection }: EmailReportOptionsProps) {
                     onChange={(e) => setIncludePhotos(e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300"
                   />
-                  <span className="text-sm">Include defect photos as attachments</span>
+                  <span className="text-sm">Include photos</span>
                 </label>
               )}
             </div>

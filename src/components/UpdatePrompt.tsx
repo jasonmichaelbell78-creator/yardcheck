@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, X, Loader2 } from 'lucide-react';
 
 export function UpdatePrompt() {
   const [isUpdating, setIsUpdating] = useState(false);
+  const isUpdatingRef = useRef(false);
   
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -23,25 +24,31 @@ export function UpdatePrompt() {
     },
   });
 
-  const handleUpdate = async () => {
+  const handleUpdate = useCallback(async () => {
+    if (isUpdatingRef.current) return;
+    
+    isUpdatingRef.current = true;
     setIsUpdating(true);
     try {
-      // Update the service worker
+      // Update the service worker - passing true tells it to reload immediately
       await updateServiceWorker(true);
-      // If updateServiceWorker doesn't reload automatically, force it
+      // The updateServiceWorker(true) should reload the page automatically
+      // But if it doesn't reload within 2 seconds, force a reload
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 2000);
     } catch (error) {
-      console.error('Failed to update:', error);
-      // Force reload anyway
+      console.error('Failed to update service worker:', error);
+      isUpdatingRef.current = false;
+      setIsUpdating(false);
+      // Try to reload anyway to get the new version
       window.location.reload();
     }
-  };
+  }, [updateServiceWorker]);
 
-  const close = () => {
+  const close = useCallback(() => {
     setNeedRefresh(false);
-  };
+  }, [setNeedRefresh]);
 
   if (!needRefresh) {
     return null;
@@ -51,16 +58,16 @@ export function UpdatePrompt() {
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md">
       <div className="flex items-center justify-between gap-4 rounded-lg bg-blue-800 px-4 py-3 text-white shadow-lg">
         <div className="flex items-center gap-3">
-          <RefreshCw className="h-5 w-5" />
+          <RefreshCw className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
           <span className="text-sm font-medium">
-            New version available!
+            {isUpdating ? 'Updating...' : 'New version available!'}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleUpdate}
             disabled={isUpdating}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-50 transition-colors disabled:opacity-50 flex items-center gap-1"
+            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
           >
             {isUpdating ? (
               <>
@@ -74,7 +81,7 @@ export function UpdatePrompt() {
           <button
             onClick={close}
             disabled={isUpdating}
-            className="rounded-md p-1.5 hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="rounded-md p-1.5 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
