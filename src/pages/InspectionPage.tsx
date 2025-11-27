@@ -16,6 +16,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ChecklistSection } from '@/components/ChecklistSection';
 import { DefectPhotos } from '@/components/DefectPhotos';
+import { CapturedPhotos } from '@/components/CapturedPhotos';
 import { EmailReportOptions } from '@/components/EmailReportOptions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInspection } from '@/hooks/useInspection';
@@ -250,6 +251,9 @@ export function InspectionPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Captured Photos Gallery */}
+        <CapturedPhotos inspection={inspection} />
 
         {/* Email Report Options - shown only when there are defects/issues */}
         <EmailReportOptions inspection={inspection} />
