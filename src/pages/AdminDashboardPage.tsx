@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User, HelpCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -240,7 +240,7 @@ export function AdminDashboardPage() {
                 Welcome, {currentInspector.name}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="ghost"
                 size="sm"
@@ -258,6 +258,15 @@ export function AdminDashboardPage() {
               >
                 <FileText className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Daily Report</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/admin/email-recipients')}
+                className="text-white hover:bg-white/10"
+              >
+                <Mail className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Email Recipients</span>
               </Button>
               <Button
                 variant="ghost"

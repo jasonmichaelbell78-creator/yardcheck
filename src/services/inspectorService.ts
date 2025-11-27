@@ -89,11 +89,24 @@ export function subscribeToAllInspectors(
 }
 
 // Add a new inspector
-export async function addInspector(name: string, isAdmin: boolean): Promise<string> {
+export async function addInspector(name: string, isAdmin: boolean, email?: string): Promise<string> {
   // Validate name
   const trimmedName = name.trim();
   if (!trimmedName || trimmedName.length > MAX_NAME_LENGTH) {
     throw new Error('Invalid inspector name');
+  }
+  
+  // Validate email if provided
+  let validatedEmail: string | null = null;
+  if (email) {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 254) {
+        throw new Error('Invalid email format');
+      }
+      validatedEmail = trimmedEmail.toLowerCase();
+    }
   }
   
   // Check active inspector limit
@@ -103,13 +116,19 @@ export async function addInspector(name: string, isAdmin: boolean): Promise<stri
   }
   
   const now = Timestamp.now();
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+  const inspectorData: Record<string, unknown> = {
     name: trimmedName,
     isAdmin,
     active: true,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  
+  if (validatedEmail) {
+    inspectorData.email = validatedEmail;
+  }
+  
+  const docRef = await addDoc(collection(db, COLLECTION_NAME), inspectorData);
   
   return docRef.id;
 }
@@ -139,7 +158,7 @@ export async function reactivateInspector(id: string): Promise<void> {
 }
 
 // Update an inspector
-export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin'>>): Promise<void> {
+export async function updateInspector(id: string, data: Partial<Pick<Inspector, 'name' | 'isAdmin' | 'email'>>): Promise<void> {
   const updateData: Record<string, unknown> = {
     updatedAt: Timestamp.now(),
   };
@@ -154,6 +173,20 @@ export async function updateInspector(id: string, data: Partial<Pick<Inspector, 
   
   if (data.isAdmin !== undefined) {
     updateData.isAdmin = data.isAdmin;
+  }
+  
+  if (data.email !== undefined) {
+    const trimmedEmail = data.email.trim();
+    // Allow empty email (to clear it) or validate format
+    if (trimmedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 254) {
+        throw new Error('Invalid email format');
+      }
+      updateData.email = trimmedEmail.toLowerCase();
+    } else {
+      updateData.email = null;
+    }
   }
   
   const docRef = doc(db, COLLECTION_NAME, id);
