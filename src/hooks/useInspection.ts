@@ -214,18 +214,31 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
       file: File,
       inspectorName: string
     ) => {
-      if (!inspectionId) return;
+      if (!inspectionId) {
+        console.error('[captureItemPhoto] No inspectionId');
+        return;
+      }
+
+      console.log('[captureItemPhoto] Starting:', { inspectionId, section, itemId, fileName: file.name, fileSize: file.size });
+
       try {
         setStatus('syncing');
-        // Upload photo to storage
+
+        // Step 1: Upload to storage
+        console.log('[captureItemPhoto] Step 1: Uploading to storage...');
         const photoUrl = await uploadInspectionPhoto(inspectionId, itemId, file);
-        // Update inspection document with photo URL
+        console.log('[captureItemPhoto] Step 1 complete. URL:', photoUrl);
+
+        // Step 2: Update Firestore
+        console.log('[captureItemPhoto] Step 2: Updating Firestore...');
         await updateChecklistItemPhoto(inspectionId, section, itemId, photoUrl, inspectorName);
+        console.log('[captureItemPhoto] Step 2 complete. Photo saved to Firestore.');
+
         setStatus('online');
       } catch (err) {
-        console.error('Error capturing photo:', err);
+        console.error('[captureItemPhoto] FAILED:', err);
         setStatus('offline');
-        
+
         const userMessage = getPhotoErrorMessage(err, 'Failed to capture photo');
         setError(userMessage);
         // Re-throw with user-friendly message so UI can handle it
@@ -268,12 +281,23 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
 
   const addDefectPhotoToInspection = useCallback(
     async (file: File, caption: string | undefined, inspectorName: string) => {
-      if (!inspectionId) return;
+      if (!inspectionId) {
+        console.error('[addDefectPhoto] No inspectionId');
+        return;
+      }
+
+      console.log('[addDefectPhoto] Starting:', { inspectionId, fileName: file.name, fileSize: file.size, hasCaption: !!caption });
+
       try {
         setStatus('syncing');
-        // Upload photo to storage
+
+        // Step 1: Upload to storage
+        console.log('[addDefectPhoto] Step 1: Uploading to storage...');
         const photoUrl = await uploadDefectPhoto(inspectionId, file);
-        // Create defect photo object
+        console.log('[addDefectPhoto] Step 1 complete. URL:', photoUrl);
+
+        // Step 2: Create photo object and save to Firestore
+        console.log('[addDefectPhoto] Step 2: Saving to Firestore...');
         // Only include caption if it has a value to avoid Firestore arrayUnion() error with undefined
         const defectPhoto: DefectPhoto = {
           url: photoUrl,
@@ -281,13 +305,16 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
           takenBy: inspectorName,
           takenAt: Timestamp.now(),
         };
-        // Add to inspection document
+        console.log('[addDefectPhoto] Photo object created with url:', photoUrl);
+
         await addDefectPhoto(inspectionId, defectPhoto);
+        console.log('[addDefectPhoto] Step 2 complete. Photo saved to Firestore.');
+
         setStatus('online');
       } catch (err) {
-        console.error('Error adding defect photo:', err);
+        console.error('[addDefectPhoto] FAILED:', err);
         setStatus('offline');
-        
+
         const userMessage = getPhotoErrorMessage(err, 'Failed to add defect photo');
         setError(userMessage);
         // Re-throw with user-friendly message so UI can handle it
