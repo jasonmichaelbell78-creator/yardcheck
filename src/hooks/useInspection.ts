@@ -20,6 +20,26 @@ import {
 import { useConnection } from '@/contexts/ConnectionContext';
 import { Timestamp } from 'firebase/firestore';
 
+/**
+ * Convert an error to a user-friendly message for photo operations
+ * @param err The error to convert
+ * @param defaultMessage The default message if no specific error is detected
+ * @returns A user-friendly error message
+ */
+function getPhotoErrorMessage(err: unknown, defaultMessage: string): string {
+  if (err instanceof Error) {
+    if (err.message.includes('memory') || err.message.includes('Memory')) {
+      return 'Photo too large for device memory. Please try again with a smaller image.';
+    } else if (err.message.includes('too large')) {
+      return err.message;
+    } else if (err.message.includes('network') || err.message.includes('Network')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    return err.message;
+  }
+  return defaultMessage;
+}
+
 interface UseInspectionResult {
   inspection: Inspection | null;
   loading: boolean;
@@ -204,9 +224,12 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         setStatus('online');
       } catch (err) {
         console.error('Error capturing photo:', err);
-        setError('Failed to capture photo');
         setStatus('offline');
-        throw err;
+        
+        const userMessage = getPhotoErrorMessage(err, 'Failed to capture photo');
+        setError(userMessage);
+        // Re-throw with user-friendly message so UI can handle it
+        throw new Error(userMessage);
       }
     },
     [inspectionId, setStatus]
@@ -262,9 +285,12 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         setStatus('online');
       } catch (err) {
         console.error('Error adding defect photo:', err);
-        setError('Failed to add defect photo');
         setStatus('offline');
-        throw err;
+        
+        const userMessage = getPhotoErrorMessage(err, 'Failed to add defect photo');
+        setError(userMessage);
+        // Re-throw with user-friendly message so UI can handle it
+        throw new Error(userMessage);
       }
     },
     [inspectionId, setStatus]
