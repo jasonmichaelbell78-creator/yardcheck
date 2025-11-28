@@ -317,7 +317,7 @@ export const sendInspectionEmail = onCall(
     }
     
     // Check SendGrid API key
-    const apiKey = sendgridApiKey.value();
+    const apiKey = sendgridApiKey.value().trim();
     if (!apiKey) {
       throw new HttpsError(
         'failed-precondition',
