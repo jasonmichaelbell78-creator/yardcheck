@@ -48,11 +48,11 @@ jobs:
       - name: Install Functions dependencies
         run: cd functions && npm ci
 
-      - name: Deploy Firebase (Firestore Rules, Functions)
+      - name: Deploy Firebase (Firestore Rules, Storage Rules, Functions)
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/gcloud.json
           export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json
-          firebase deploy --only firestore:rules,functions --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          firebase deploy --only firestore:rules,storage,functions --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
 
