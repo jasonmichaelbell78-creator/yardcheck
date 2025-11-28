@@ -435,8 +435,9 @@ export const sendInspectionEmail = onCall(
         );
       }
       
+      const errorsList = Array.isArray(errorBody?.errors) ? errorBody.errors : [];
       if (errorMessage.includes('forbidden') || errorMessage.includes('403') || 
-          (errorBody?.errors?.some((e: { message: string }) => e.message.includes('sender')))) {
+          errorsList.some((e: { message: string }) => e.message?.includes('sender'))) {
         throw new HttpsError(
           'failed-precondition',
           'The sender email address is not verified in SendGrid. Please verify your sender email in SendGrid (Settings → Sender Authentication) and ensure the FROM_EMAIL secret matches. See SETUP_GUIDE.md for instructions.'
