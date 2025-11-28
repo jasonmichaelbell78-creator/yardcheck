@@ -61,17 +61,37 @@ If you already have Firebase CLI installed, skip to Step 5.
    ```
    (Replace `path/to/yardcheck` with the actual path to your project)
 
-## Step 7: Set the SendGrid API Key Secret
+## Step 7: Configure the "From" Email Address
 
-Run this command, replacing `YOUR_API_KEY` with the API key you saved in Step 2:
+You need to tell the function which email address to send from (this must match what you verified in SendGrid in Step 3).
+
+1. Navigate to the `functions` folder:
+   ```
+   cd functions
+   ```
+
+2. Create a file called `.env` with this content:
+   ```
+   FROM_EMAIL=your-verified-email@example.com
+   ```
+   (Replace `your-verified-email@example.com` with the email you verified in SendGrid in Step 3)
+
+3. Go back to the project root:
+   ```
+   cd ..
+   ```
+
+## Step 8: Set the SendGrid API Key Secret
+
+Run this command:
 
 ```
 firebase functions:secrets:set SENDGRID_API_KEY
 ```
 
-When prompted, paste your SendGrid API key and press Enter.
+When prompted, paste the API key you saved in Step 2 and press Enter.
 
-## Step 8: Deploy the Functions
+## Step 9: Deploy the Functions
 
 Run this command:
 
@@ -84,7 +104,7 @@ Wait for the deployment to complete. You should see a message like:
 ✔ Deploy complete!
 ```
 
-## Step 9: Verify the Deployment
+## Step 10: Verify the Deployment
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your YardCheck project
@@ -117,18 +137,3 @@ Wait for the deployment to complete. You should see a message like:
   cd ..
   firebase deploy --only functions
   ```
-
-## Optional: Change the "From" Email Address
-
-By default, emails are sent from `noreply@yardcheck.app`. To use a different email address:
-
-```
-firebase functions:config:set from_email="your-email@example.com"
-```
-
-Then redeploy:
-```
-firebase deploy --only functions
-```
-
-**Note:** The email address must be verified in SendGrid (Step 3).
