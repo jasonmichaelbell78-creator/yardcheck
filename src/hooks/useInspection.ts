@@ -274,9 +274,10 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         // Upload photo to storage
         const photoUrl = await uploadDefectPhoto(inspectionId, file);
         // Create defect photo object
+        // Only include caption if it has a value to avoid Firestore arrayUnion() error with undefined
         const defectPhoto: DefectPhoto = {
           url: photoUrl,
-          caption,
+          ...(caption ? { caption } : {}),
           takenBy: inspectorName,
           takenAt: Timestamp.now(),
         };
