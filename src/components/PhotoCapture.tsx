@@ -93,8 +93,9 @@ export function PhotoCapture({
             type="button"
             onClick={handleThumbnailClick}
             className={cn(
-              'w-[60px] h-[60px] rounded-md overflow-hidden border border-gray-200',
-              'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+              'w-[60px] h-[60px] rounded-md overflow-hidden',
+              'border-2 border-green-500',
+              'focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1',
               onPhotoClick && 'cursor-pointer hover:opacity-90'
             )}
           >
@@ -129,11 +130,12 @@ export function PhotoCapture({
         </div>
       )}
 
-      {/* Photo captured indicator */}
+      {/* Photo saved indicator - more prominent */}
       {existingPhotoUrl && (
-        <span title="Photo captured">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-        </span>
+        <div className="flex items-center gap-1 text-green-600">
+          <CheckCircle className="w-6 h-6 flex-shrink-0" />
+          <span className="text-xs font-medium whitespace-nowrap">Photo saved ✓</span>
+        </div>
       )}
 
       {/* Camera button */}
