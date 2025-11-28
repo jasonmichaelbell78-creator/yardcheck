@@ -51,6 +51,16 @@ jobs:
       - name: Build Functions
         run: cd functions && npm run build
 
+      - name: Create Functions environment file
+        run: |
+          if [ -n "$FROM_EMAIL" ]; then
+            echo "FROM_EMAIL=$FROM_EMAIL" > functions/.env
+          else
+            echo "FROM_EMAIL=noreply@yardcheck.app" > functions/.env
+          fi
+        env:
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+
       - name: Deploy Firebase (Firestore Rules, Storage Rules, Functions)
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/gcloud.json
