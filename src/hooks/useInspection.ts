@@ -277,7 +277,7 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         // Only include caption if it has a value to avoid Firestore arrayUnion() error with undefined
         const defectPhoto: DefectPhoto = {
           url: photoUrl,
-          ...(caption ? { caption } : {}),
+          ...(caption && caption.trim() ? { caption: caption.trim() } : {}),
           takenBy: inspectorName,
           takenAt: Timestamp.now(),
         };
