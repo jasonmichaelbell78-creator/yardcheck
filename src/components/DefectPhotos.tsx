@@ -38,19 +38,43 @@ export function DefectPhotos({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Prevent rapid successive captures - if already uploading, ignore
+    if (isUploading) {
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Ignoring file change - upload already in progress');
+      }
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('[DefectPhoto] File selected:', file.name, file.size);
+    }
+
+    // Reset input immediately to prevent stale state
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
     // Show caption input
     setPendingFile(file);
     setShowCaption(true);
     setCaptionText('');
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const handleUploadWithCaption = async () => {
     if (!pendingFile) return;
+
+    // Prevent double submission
+    if (isUploading) {
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Ignoring upload - already in progress');
+      }
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('[DefectPhoto] Starting upload for file:', pendingFile.name, pendingFile.size);
+    }
 
     setError(null);
     setIsUploading(true);
@@ -58,8 +82,17 @@ export function DefectPhotos({
 
     try {
       await onAddPhoto(pendingFile, captionText.trim() || undefined);
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Upload successful');
+      }
     } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('[DefectPhoto] Upload failed:', err);
+      }
       setError(err instanceof Error ? err.message : 'Failed to upload photo');
+      // Clear any pending state on error
+      setPendingFile(null);
+      setCaptionText('');
     } finally {
       setIsUploading(false);
       setPendingFile(null);

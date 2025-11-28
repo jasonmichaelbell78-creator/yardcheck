@@ -43,7 +43,15 @@ export function ChecklistSection({
           <ChecklistItem
             key={item.id}
             config={item}
-            data={data[item.id] || { value: null, comment: '', answeredBy: '', answeredAt: null }}
+            data={data[item.id] || { 
+              value: null, 
+              comment: '', 
+              answeredBy: '', 
+              answeredAt: null,
+              photoUrl: null,
+              photoTakenBy: null,
+              photoTakenAt: null
+            }}
             onValueChange={(value) => onValueChange(item.id, value)}
             onCommentChange={(comment) => onCommentChange(item.id, comment)}
             allowPhoto={allowPhoto}
