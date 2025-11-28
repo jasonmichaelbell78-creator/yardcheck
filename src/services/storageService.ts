@@ -217,36 +217,53 @@ export async function uploadInspectionPhoto(
   itemId: string,
   file: File
 ): Promise<string> {
-  console.log(`[PhotoUpload] Starting upload for inspection ${inspectionId}, item ${itemId}, file size: ${file.size} bytes`);
-  
-  // Validate inputs
-  if (!inspectionId || !itemId) {
-    throw new Error('Invalid inspection or item ID');
+  console.log(`[PhotoUpload] === START uploadInspectionPhoto ===`);
+  console.log(`[PhotoUpload] inspectionId: ${inspectionId}, itemId: ${itemId}`);
+  console.log(`[PhotoUpload] File: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
+  try {
+    // Validate inputs
+    if (!inspectionId || !itemId) {
+      throw new Error('Invalid inspection or item ID');
+    }
+
+    validateImageFile(file);
+    console.log(`[PhotoUpload] Validation passed`);
+
+    // Compress image before upload with safe fallback
+    console.log(`[PhotoUpload] Starting compression...`);
+    const compressedBlob = await compressImageSafely(file);
+    console.log(`[PhotoUpload] Compression complete. Size: ${compressedBlob.size} bytes`);
+
+    // If still too large after compression, throw error
+    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
+      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
+    }
+
+    // Create storage reference
+    const timestamp = Date.now();
+    const path = `inspections/${inspectionId}/${itemId}_${timestamp}.jpg`;
+    console.log(`[PhotoUpload] Storage path: ${path}`);
+
+    const storageRef = ref(storage, path);
+
+    // Upload
+    console.log(`[PhotoUpload] Starting Firebase upload...`);
+    await uploadBytes(storageRef, compressedBlob, {
+      contentType: 'image/jpeg',
+    });
+    console.log(`[PhotoUpload] Firebase upload complete`);
+
+    // Get URL
+    console.log(`[PhotoUpload] Getting download URL...`);
+    const url = await getDownloadURL(storageRef);
+    console.log(`[PhotoUpload] === SUCCESS === URL: ${url}`);
+
+    return url;
+  } catch (error) {
+    console.error(`[PhotoUpload] === FAILED ===`, error);
+    throw error;
   }
-  
-  validateImageFile(file);
-
-  // Compress image before upload with safe fallback
-  console.log(`[PhotoUpload] Compressing image...`);
-  const compressedBlob = await compressImageSafely(file);
-  console.log(`[PhotoUpload] Compressed size: ${compressedBlob.size} bytes`);
-  
-  // If still too large after compression, throw error
-  if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
-  }
-
-  const timestamp = Date.now();
-  const path = `inspections/${inspectionId}/${itemId}_${timestamp}.jpg`;
-  const storageRef = ref(storage, path);
-
-  await uploadBytes(storageRef, compressedBlob, {
-    contentType: 'image/jpeg',
-  });
-
-  const url = await getDownloadURL(storageRef);
-  console.log(`[PhotoUpload] Upload complete, URL: ${url}`);
-  return url;
 }
 
 /**
@@ -259,36 +276,53 @@ export async function uploadDefectPhoto(
   inspectionId: string,
   file: File
 ): Promise<string> {
-  console.log(`[PhotoUpload] Starting defect photo upload for inspection ${inspectionId}, file size: ${file.size} bytes`);
-  
-  // Validate inputs
-  if (!inspectionId) {
-    throw new Error('Invalid inspection ID');
+  console.log(`[PhotoUpload] === START uploadDefectPhoto ===`);
+  console.log(`[PhotoUpload] inspectionId: ${inspectionId}`);
+  console.log(`[PhotoUpload] File: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
+  try {
+    // Validate inputs
+    if (!inspectionId) {
+      throw new Error('Invalid inspection ID');
+    }
+
+    validateImageFile(file);
+    console.log(`[PhotoUpload] Validation passed`);
+
+    // Compress image before upload with safe fallback
+    console.log(`[PhotoUpload] Starting compression...`);
+    const compressedBlob = await compressImageSafely(file);
+    console.log(`[PhotoUpload] Compression complete. Size: ${compressedBlob.size} bytes`);
+
+    // If still too large after compression, throw error
+    if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
+      throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
+    }
+
+    // Create storage reference
+    const timestamp = Date.now();
+    const path = `inspections/${inspectionId}/defect_${timestamp}.jpg`;
+    console.log(`[PhotoUpload] Storage path: ${path}`);
+
+    const storageRef = ref(storage, path);
+
+    // Upload
+    console.log(`[PhotoUpload] Starting Firebase upload...`);
+    await uploadBytes(storageRef, compressedBlob, {
+      contentType: 'image/jpeg',
+    });
+    console.log(`[PhotoUpload] Firebase upload complete`);
+
+    // Get URL
+    console.log(`[PhotoUpload] Getting download URL...`);
+    const url = await getDownloadURL(storageRef);
+    console.log(`[PhotoUpload] === SUCCESS === URL: ${url}`);
+
+    return url;
+  } catch (error) {
+    console.error(`[PhotoUpload] === FAILED ===`, error);
+    throw error;
   }
-  
-  validateImageFile(file);
-
-  // Compress image before upload with safe fallback
-  console.log(`[PhotoUpload] Compressing image...`);
-  const compressedBlob = await compressImageSafely(file);
-  console.log(`[PhotoUpload] Compressed size: ${compressedBlob.size} bytes`);
-  
-  // If still too large after compression, throw error
-  if (compressedBlob.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error(`Image is too large after compression (${Math.round(compressedBlob.size / 1024)}KB). Please use a smaller image.`);
-  }
-
-  const timestamp = Date.now();
-  const path = `inspections/${inspectionId}/defect_${timestamp}.jpg`;
-  const storageRef = ref(storage, path);
-
-  await uploadBytes(storageRef, compressedBlob, {
-    contentType: 'image/jpeg',
-  });
-
-  const url = await getDownloadURL(storageRef);
-  console.log(`[PhotoUpload] Upload complete, URL: ${url}`);
-  return url;
 }
 
 /**

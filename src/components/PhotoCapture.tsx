@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Camera, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
@@ -22,6 +22,15 @@ export function PhotoCapture({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Clear success message after 2 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => setShowSuccess(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
 
   const handleCameraClick = () => {
     if (disabled || isUploading) return;
@@ -32,12 +41,19 @@ export function PhotoCapture({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('[PhotoCapture] File selected:', { name: file.name, size: file.size, type: file.type });
+
     setError(null);
+    setShowSuccess(false);
     setIsUploading(true);
 
     try {
+      console.log('[PhotoCapture] Calling onCapture...');
       await onCapture(file);
+      console.log('[PhotoCapture] onCapture succeeded');
+      setShowSuccess(true);
     } catch (err) {
+      console.error('[PhotoCapture] onCapture failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload photo');
     } finally {
       setIsUploading(false);
@@ -158,11 +174,23 @@ export function PhotoCapture({
         )}
       </Button>
 
-      {/* Error message */}
+      {/* Success message - temporary feedback */}
+      {showSuccess && !existingPhotoUrl && (
+        <div className="flex items-center gap-1 text-xs text-green-600">
+          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+          <span>Saved!</span>
+        </div>
+      )}
+
+      {/* Error message - more prominent */}
       {error && (
-        <div className="flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="relative">
+          <div className="p-2 bg-red-100 border border-red-300 text-red-700 text-xs rounded-md shadow-lg whitespace-nowrap">
+            <div className="flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
