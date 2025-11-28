@@ -321,7 +321,7 @@ export const sendInspectionEmail = onCall(
     if (!apiKey) {
       throw new HttpsError(
         'failed-precondition',
-        'SendGrid API key is not configured. Please set the SENDGRID_API_KEY secret.'
+        'SendGrid API key not configured. Please add the SENDGRID_API_KEY secret to your GitHub repository (Settings → Secrets and variables → Actions) and re-run the deployment workflow. See SETUP_GUIDE.md for detailed instructions.'
       );
     }
     
@@ -423,9 +423,30 @@ export const sendInspectionEmail = onCall(
         throw error;
       }
       
+      // Check for SendGrid-specific errors
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorBody = (error as { response?: { body?: { errors?: Array<{ message: string }> } } })?.response?.body;
+      
+      // Handle common SendGrid errors with user-friendly messages
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        throw new HttpsError(
+          'unauthenticated',
+          'SendGrid API key is invalid. Please check that the SENDGRID_API_KEY secret in GitHub is correct and re-run the deployment.'
+        );
+      }
+      
+      const errorsList = Array.isArray(errorBody?.errors) ? errorBody.errors : [];
+      if (errorMessage.includes('forbidden') || errorMessage.includes('403') || 
+          errorsList.some((e: { message: string }) => e.message?.includes('sender'))) {
+        throw new HttpsError(
+          'failed-precondition',
+          'The sender email address is not verified in SendGrid. Please verify your sender email in SendGrid (Settings → Sender Authentication) and ensure the FROM_EMAIL secret matches. See SETUP_GUIDE.md for instructions.'
+        );
+      }
+      
       throw new HttpsError(
         'internal',
-        `Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to send email: ${errorMessage}`
       );
     }
   }
