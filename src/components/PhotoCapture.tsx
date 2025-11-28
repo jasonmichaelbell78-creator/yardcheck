@@ -175,7 +175,7 @@ export function PhotoCapture({
       </Button>
 
       {/* Success message - temporary feedback */}
-      {showSuccess && !existingPhotoUrl && (
+      {showSuccess && (
         <div className="flex items-center gap-1 text-xs text-green-600">
           <CheckCircle className="w-4 h-4 flex-shrink-0" />
           <span>Saved!</span>

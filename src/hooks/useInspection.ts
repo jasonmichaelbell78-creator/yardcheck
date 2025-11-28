@@ -305,7 +305,7 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
           takenBy: inspectorName,
           takenAt: Timestamp.now(),
         };
-        console.log('[addDefectPhoto] Photo object:', JSON.stringify(defectPhoto));
+        console.log('[addDefectPhoto] Photo object created with url:', photoUrl);
 
         await addDefectPhoto(inspectionId, defectPhoto);
         console.log('[addDefectPhoto] Step 2 complete. Photo saved to Firestore.');
