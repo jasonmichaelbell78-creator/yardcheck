@@ -96,16 +96,37 @@ async function compressImageMemorySafe(file: File, quality: number): Promise<Blo
   // Try createImageBitmap first (more memory efficient on mobile)
   if ('createImageBitmap' in window) {
     let bitmap: ImageBitmap | null = null;
-    let canvas: HTMLCanvasElement | null = null;
     
     try {
+      // First, get the image dimensions to calculate proper aspect ratio
+      // Use createImageBitmap without resize to get original dimensions
+      const originalBitmap = await createImageBitmap(file);
+      const originalWidth = originalBitmap.width;
+      const originalHeight = originalBitmap.height;
+      originalBitmap.close();
+      
+      // Calculate new dimensions maintaining aspect ratio
+      let targetWidth = originalWidth;
+      let targetHeight = originalHeight;
+      
+      if (targetWidth > MAX_WIDTH) {
+        targetHeight = (targetHeight * MAX_WIDTH) / targetWidth;
+        targetWidth = MAX_WIDTH;
+      }
+      
+      if (targetHeight > MAX_HEIGHT) {
+        targetWidth = (targetWidth * MAX_HEIGHT) / targetHeight;
+        targetHeight = MAX_HEIGHT;
+      }
+      
+      // Now resize with correct aspect ratio
       bitmap = await createImageBitmap(file, {
-        resizeWidth: MAX_WIDTH,
-        resizeHeight: MAX_HEIGHT,
+        resizeWidth: Math.round(targetWidth),
+        resizeHeight: Math.round(targetHeight),
         resizeQuality: 'medium'
       });
       
-      canvas = document.createElement('canvas');
+      const canvas = document.createElement('canvas');
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
       const ctx = canvas.getContext('2d');
@@ -116,10 +137,8 @@ async function compressImageMemorySafe(file: File, quality: number): Promise<Blo
         bitmap = null;
         
         return new Promise((resolve, reject) => {
-          canvas!.toBlob(
+          canvas.toBlob(
             (blob) => {
-              // Clear canvas reference for garbage collection
-              canvas = null;
               if (blob) resolve(blob);
               else reject(new Error('Failed to create blob'));
             },
@@ -140,9 +159,6 @@ async function compressImageMemorySafe(file: File, quality: number): Promise<Blo
       if (bitmap) {
         try { bitmap.close(); } catch { /* ignore cleanup errors */ }
       }
-    } finally {
-      // Ensure cleanup
-      canvas = null;
     }
   }
   

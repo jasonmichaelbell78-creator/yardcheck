@@ -20,6 +20,26 @@ import {
 import { useConnection } from '@/contexts/ConnectionContext';
 import { Timestamp } from 'firebase/firestore';
 
+/**
+ * Convert an error to a user-friendly message for photo operations
+ * @param err The error to convert
+ * @param defaultMessage The default message if no specific error is detected
+ * @returns A user-friendly error message
+ */
+function getPhotoErrorMessage(err: unknown, defaultMessage: string): string {
+  if (err instanceof Error) {
+    if (err.message.includes('memory') || err.message.includes('Memory')) {
+      return 'Photo too large for device memory. Please try again with a smaller image.';
+    } else if (err.message.includes('too large')) {
+      return err.message;
+    } else if (err.message.includes('network') || err.message.includes('Network')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    return err.message;
+  }
+  return defaultMessage;
+}
+
 interface UseInspectionResult {
   inspection: Inspection | null;
   loading: boolean;
@@ -206,20 +226,7 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         console.error('Error capturing photo:', err);
         setStatus('offline');
         
-        // Provide user-friendly error message for common issues
-        let userMessage = 'Failed to capture photo';
-        if (err instanceof Error) {
-          if (err.message.includes('memory') || err.message.includes('Memory')) {
-            userMessage = 'Photo too large for device memory. Please try again with a smaller image.';
-          } else if (err.message.includes('too large')) {
-            userMessage = err.message;
-          } else if (err.message.includes('network') || err.message.includes('Network')) {
-            userMessage = 'Network error. Please check your connection and try again.';
-          } else {
-            userMessage = err.message;
-          }
-        }
-        
+        const userMessage = getPhotoErrorMessage(err, 'Failed to capture photo');
         setError(userMessage);
         // Re-throw with user-friendly message so UI can handle it
         throw new Error(userMessage);
@@ -280,20 +287,7 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         console.error('Error adding defect photo:', err);
         setStatus('offline');
         
-        // Provide user-friendly error message for common issues
-        let userMessage = 'Failed to add defect photo';
-        if (err instanceof Error) {
-          if (err.message.includes('memory') || err.message.includes('Memory')) {
-            userMessage = 'Photo too large for device memory. Please try again with a smaller image.';
-          } else if (err.message.includes('too large')) {
-            userMessage = err.message;
-          } else if (err.message.includes('network') || err.message.includes('Network')) {
-            userMessage = 'Network error. Please check your connection and try again.';
-          } else {
-            userMessage = err.message;
-          }
-        }
-        
+        const userMessage = getPhotoErrorMessage(err, 'Failed to add defect photo');
         setError(userMessage);
         // Re-throw with user-friendly message so UI can handle it
         throw new Error(userMessage);
