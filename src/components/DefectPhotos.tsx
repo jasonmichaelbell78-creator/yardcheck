@@ -40,11 +40,15 @@ export function DefectPhotos({
 
     // Prevent rapid successive captures - if already uploading, ignore
     if (isUploading) {
-      console.log('[DefectPhoto] Ignoring file change - upload already in progress');
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Ignoring file change - upload already in progress');
+      }
       return;
     }
 
-    console.log('[DefectPhoto] File selected:', file.name, file.size);
+    if (import.meta.env.DEV) {
+      console.log('[DefectPhoto] File selected:', file.name, file.size);
+    }
 
     // Reset input immediately to prevent stale state
     if (fileInputRef.current) {
@@ -62,11 +66,15 @@ export function DefectPhotos({
 
     // Prevent double submission
     if (isUploading) {
-      console.log('[DefectPhoto] Ignoring upload - already in progress');
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Ignoring upload - already in progress');
+      }
       return;
     }
 
-    console.log('[DefectPhoto] Starting upload for file:', pendingFile.name, pendingFile.size);
+    if (import.meta.env.DEV) {
+      console.log('[DefectPhoto] Starting upload for file:', pendingFile.name, pendingFile.size);
+    }
 
     setError(null);
     setIsUploading(true);
@@ -74,9 +82,13 @@ export function DefectPhotos({
 
     try {
       await onAddPhoto(pendingFile, captionText.trim() || undefined);
-      console.log('[DefectPhoto] Upload successful');
+      if (import.meta.env.DEV) {
+        console.log('[DefectPhoto] Upload successful');
+      }
     } catch (err) {
-      console.error('[DefectPhoto] Upload failed:', err);
+      if (import.meta.env.DEV) {
+        console.error('[DefectPhoto] Upload failed:', err);
+      }
       setError(err instanceof Error ? err.message : 'Failed to upload photo');
       // Clear any pending state on error
       setPendingFile(null);
