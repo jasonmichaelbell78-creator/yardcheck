@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Camera, X, Loader2, CheckCircle } from 'lucide-react';
+import { Camera, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
 
@@ -158,7 +158,10 @@ export function PhotoCapture({
 
       {/* Error message */}
       {error && (
-        <span className="text-xs text-destructive">{error}</span>
+        <div className="flex items-center gap-1 text-xs text-destructive">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
       )}
     </div>
   );

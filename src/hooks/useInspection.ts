@@ -204,9 +204,25 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         setStatus('online');
       } catch (err) {
         console.error('Error capturing photo:', err);
-        setError('Failed to capture photo');
         setStatus('offline');
-        throw err;
+        
+        // Provide user-friendly error message for common issues
+        let userMessage = 'Failed to capture photo';
+        if (err instanceof Error) {
+          if (err.message.includes('memory') || err.message.includes('Memory')) {
+            userMessage = 'Photo too large for device memory. Please try again with a smaller image.';
+          } else if (err.message.includes('too large')) {
+            userMessage = err.message;
+          } else if (err.message.includes('network') || err.message.includes('Network')) {
+            userMessage = 'Network error. Please check your connection and try again.';
+          } else {
+            userMessage = err.message;
+          }
+        }
+        
+        setError(userMessage);
+        // Re-throw with user-friendly message so UI can handle it
+        throw new Error(userMessage);
       }
     },
     [inspectionId, setStatus]
@@ -262,9 +278,25 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
         setStatus('online');
       } catch (err) {
         console.error('Error adding defect photo:', err);
-        setError('Failed to add defect photo');
         setStatus('offline');
-        throw err;
+        
+        // Provide user-friendly error message for common issues
+        let userMessage = 'Failed to add defect photo';
+        if (err instanceof Error) {
+          if (err.message.includes('memory') || err.message.includes('Memory')) {
+            userMessage = 'Photo too large for device memory. Please try again with a smaller image.';
+          } else if (err.message.includes('too large')) {
+            userMessage = err.message;
+          } else if (err.message.includes('network') || err.message.includes('Network')) {
+            userMessage = 'Network error. Please check your connection and try again.';
+          } else {
+            userMessage = err.message;
+          }
+        }
+        
+        setError(userMessage);
+        // Re-throw with user-friendly message so UI can handle it
+        throw new Error(userMessage);
       }
     },
     [inspectionId, setStatus]

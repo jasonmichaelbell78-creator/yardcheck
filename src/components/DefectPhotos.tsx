@@ -110,6 +110,14 @@ export function DefectPhotos({
         disabled={disabled || isUploading}
       />
 
+      {/* Prominent uploading indicator */}
+      {isUploading && !showCaption && (
+        <div className="flex items-center gap-2 p-3 bg-primary/10 text-primary rounded-md text-sm">
+          <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+          <span>Uploading photo...</span>
+        </div>
+      )}
+
       {/* Caption input dialog */}
       {showCaption && (
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
