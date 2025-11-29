@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,30 @@ export function TruckEntryPage() {
   
   // Track the inspector name for which history was loaded
   const lastLoadedInspectorRef = useRef<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    if (!currentInspector) return;
+    
+    setHistoryLoading(true);
+    setHistoryError(null);
+    
+    try {
+      const startDate = historyStartDate ? new Date(historyStartDate) : undefined;
+      const endDate = historyEndDate ? new Date(historyEndDate) : undefined;
+      
+      const results = await getInspectorInspections(
+        currentInspector.name,
+        startDate,
+        endDate
+      );
+      setHistoryInspections(results);
+    } catch (err) {
+      console.error('Error loading history:', err);
+      setHistoryError('Failed to load inspection history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [currentInspector, historyStartDate, historyEndDate]);
 
   // Load history when section is opened for the first time or when inspector changes
   useEffect(() => {
@@ -101,32 +125,7 @@ export function TruckEntryPage() {
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
-
-  const loadHistory = async () => {
-    if (!currentInspector) return;
-    
-    setHistoryLoading(true);
-    setHistoryError(null);
-    
-    try {
-      const startDate = historyStartDate ? new Date(historyStartDate) : undefined;
-      const endDate = historyEndDate ? new Date(historyEndDate) : undefined;
-      
-      const results = await getInspectorInspections(
-        currentInspector.name,
-        startDate,
-        endDate
-      );
-      setHistoryInspections(results);
-    } catch (err) {
-      console.error('Error loading history:', err);
-      setHistoryError('Failed to load inspection history');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+  }, [location.state, currentInspector, loadHistory, navigate, location.pathname]);
 
   // Filter history inspections by truck number
   const filteredHistoryInspections = useMemo(() => {
