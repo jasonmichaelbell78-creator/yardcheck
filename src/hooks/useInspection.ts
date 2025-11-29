@@ -20,6 +20,9 @@ import {
 import { useConnection } from '@/contexts/ConnectionContext';
 import { Timestamp } from 'firebase/firestore';
 
+// Maximum number of retry attempts for photo upload operations
+const PHOTO_UPLOAD_MAX_RETRIES = 2;
+
 /**
  * Convert an error to a user-friendly message for photo operations
  * @param err The error to convert
@@ -221,29 +224,47 @@ export function useInspection(inspectionId: string | null): UseInspectionResult 
 
       console.log('[captureItemPhoto] Starting:', { inspectionId, section, itemId, fileName: file.name, fileSize: file.size });
 
-      try {
-        setStatus('syncing');
+      let lastError: unknown = null;
 
-        // Step 1: Upload to storage
-        console.log('[captureItemPhoto] Step 1: Uploading to storage...');
-        const photoUrl = await uploadInspectionPhoto(inspectionId, itemId, file);
-        console.log('[captureItemPhoto] Step 1 complete. URL:', photoUrl);
+      for (let attempt = 1; attempt <= PHOTO_UPLOAD_MAX_RETRIES; attempt++) {
+        try {
+          setStatus('syncing');
 
-        // Step 2: Update Firestore
-        console.log('[captureItemPhoto] Step 2: Updating Firestore...');
-        await updateChecklistItemPhoto(inspectionId, section, itemId, photoUrl, inspectorName);
-        console.log('[captureItemPhoto] Step 2 complete. Photo saved to Firestore.');
+          // Small delay on first attempt to ensure document is ready
+          if (attempt === 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
 
-        setStatus('online');
-      } catch (err) {
-        console.error('[captureItemPhoto] FAILED:', err);
-        setStatus('offline');
+          // Step 1: Upload to storage
+          console.log(`[captureItemPhoto] Attempt ${attempt}/${PHOTO_UPLOAD_MAX_RETRIES} - Step 1: Uploading to storage...`);
+          const photoUrl = await uploadInspectionPhoto(inspectionId, itemId, file);
+          console.log(`[captureItemPhoto] Attempt ${attempt}/${PHOTO_UPLOAD_MAX_RETRIES} - Step 1 complete. URL:`, photoUrl);
 
-        const userMessage = getPhotoErrorMessage(err, 'Failed to capture photo');
-        setError(userMessage);
-        // Re-throw with user-friendly message so UI can handle it
-        throw new Error(userMessage);
+          // Step 2: Update Firestore
+          console.log(`[captureItemPhoto] Attempt ${attempt}/${PHOTO_UPLOAD_MAX_RETRIES} - Step 2: Updating Firestore...`);
+          await updateChecklistItemPhoto(inspectionId, section, itemId, photoUrl, inspectorName);
+          console.log(`[captureItemPhoto] Attempt ${attempt}/${PHOTO_UPLOAD_MAX_RETRIES} - Step 2 complete. Photo saved to Firestore.`);
+
+          setStatus('online');
+          return; // Success, exit the function
+        } catch (err) {
+          lastError = err;
+          console.error(`[captureItemPhoto] Attempt ${attempt}/${PHOTO_UPLOAD_MAX_RETRIES} FAILED:`, err);
+
+          if (attempt < PHOTO_UPLOAD_MAX_RETRIES) {
+            // Wait before retrying (exponential backoff: 500ms, then 1000ms)
+            const delay = 500 * attempt;
+            console.log(`[captureItemPhoto] Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
       }
+
+      // All retries failed
+      setStatus('offline');
+      const userMessage = getPhotoErrorMessage(lastError, 'Failed to capture photo. Please try again.');
+      setError(userMessage);
+      throw new Error(userMessage);
     },
     [inspectionId, setStatus]
   );
