@@ -132,7 +132,7 @@ export function InspectionPage() {
 
   const handleComplete = async () => {
     await complete();
-    navigate('/trucks');
+    navigate('/trucks', { state: { refreshHistory: true } });
   };
 
   const handleSaveIncomplete = () => {

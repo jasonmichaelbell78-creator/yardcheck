@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ function getDefaultDates() {
 
 export function TruckEntryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentInspector, setCurrentInspector } = useAuth();
   const { inspections, loading } = useInProgressInspections();
   const [truckNumber, setTruckNumber] = useState('');
@@ -89,6 +90,19 @@ export function TruckEntryPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showHistory, currentInspector?.name]);
+
+  // Refresh history when returning from a completed inspection
+  useEffect(() => {
+    const state = location.state as { refreshHistory?: boolean } | null;
+    if (state?.refreshHistory && currentInspector) {
+      // Auto-expand history section and reload
+      setShowHistory(true);
+      loadHistory();
+      // Clear the state to prevent re-triggering on subsequent renders
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const loadHistory = async () => {
     if (!currentInspector) return;
