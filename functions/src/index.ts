@@ -297,36 +297,39 @@ async function downloadPhotoAsBase64(url: string): Promise<{ content: string; ty
 
 /**
  * Check rate limit for email sending (10 emails per hour per user)
+ * Uses a transaction to prevent race conditions
  */
 async function checkRateLimit(userId: string): Promise<void> {
   const rateLimitRef = db.collection('rateLimits').doc(userId);
   const now = Date.now();
   const oneHourAgo = now - (60 * 60 * 1000); // 1 hour in milliseconds
   
-  const doc = await rateLimitRef.get();
-  
-  if (doc.exists) {
-    const data = doc.data();
-    const recentEmails = (data?.emailTimestamps || [])
-      .filter((timestamp: number) => timestamp > oneHourAgo);
+  await db.runTransaction(async (transaction) => {
+    const doc = await transaction.get(rateLimitRef);
     
-    if (recentEmails.length >= 10) {
-      throw new HttpsError(
-        'resource-exhausted',
-        'Too many emails sent. Please wait an hour before sending more.'
-      );
+    if (doc.exists) {
+      const data = doc.data();
+      const recentEmails = (data?.emailTimestamps || [])
+        .filter((timestamp: number) => timestamp > oneHourAgo);
+      
+      if (recentEmails.length >= 10) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Too many emails sent. Please wait an hour before sending more.'
+        );
+      }
+      
+      // Add current timestamp
+      transaction.update(rateLimitRef, {
+        emailTimestamps: [...recentEmails, now]
+      });
+    } else {
+      // First email from this user
+      transaction.set(rateLimitRef, {
+        emailTimestamps: [now]
+      });
     }
-    
-    // Add current timestamp
-    await rateLimitRef.update({
-      emailTimestamps: [...recentEmails, now]
-    });
-  } else {
-    // First email from this user
-    await rateLimitRef.set({
-      emailTimestamps: [now]
-    });
-  }
+  });
 }
 
 /**
