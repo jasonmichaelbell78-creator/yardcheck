@@ -452,8 +452,12 @@ export const sendInspectionEmail = onCall(
   }
 );
 
-// Stock password for new accounts
-const STOCK_PASSWORD = 'YardCheck2024!';
+// Stock password for new accounts - configurable via environment
+// This password is intentionally simple and known because:
+// 1. Users MUST change it on first login (mustChangePassword flag is set)
+// 2. It's only used for initial account setup
+// 3. Can be overridden via Firebase environment config if needed
+const stockPassword = defineString('STOCK_PASSWORD', { default: 'YardCheck2024!' });
 
 // Types for auth management
 interface CreateInspectorAccountRequest {
@@ -560,7 +564,7 @@ export const createInspectorAccount = onCall(
       try {
         await admin.auth().createUser({
           email: email,
-          password: STOCK_PASSWORD,
+          password: stockPassword.value(),
           displayName: name,
         });
       } catch (authError) {
@@ -653,7 +657,7 @@ export const resetInspectorPassword = onCall(
       
       // Reset the password
       await admin.auth().updateUser(userRecord.uid, {
-        password: STOCK_PASSWORD,
+        password: stockPassword.value(),
       });
       
       // Update the mustChangePassword flag in Firestore

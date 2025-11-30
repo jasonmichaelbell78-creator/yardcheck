@@ -98,7 +98,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      sessionStorage.removeItem('currentInspector');
     } catch (error) {
       console.error('Logout error:', error);
       throw new Error('Failed to log out. Please try again.');

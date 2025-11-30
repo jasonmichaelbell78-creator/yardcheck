@@ -6,14 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Helper function to check if user is an admin
-    // Note: This requires the caller's email to match an admin inspector
-    function isAdminUser() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/inspectors/$(request.auth.token.email)) == false;
-      // Admin check is done in Cloud Functions for security
-    }
-    
     // Helper function to validate inspection data on create
     function isValidInspection() {
       let data = request.resource.data;
