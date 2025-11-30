@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User, HelpCircle, Mail } from 'lucide-react';
+import { ArrowLeft, ClipboardList, CheckCircle, Clock, TrendingUp, Search, Users, FileText, User, HelpCircle, Mail, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -241,6 +241,15 @@ export function AdminDashboardPage() {
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/trucks')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Start Inspection
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
