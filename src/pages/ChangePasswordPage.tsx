@@ -11,7 +11,7 @@ import { db } from '@/config/firebase';
 
 export function ChangePasswordPage() {
   const navigate = useNavigate();
-  const { user, inspector } = useAuth();
+  const { user, inspector, clearMustChangePassword } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,9 @@ export function ChangePasswordPage() {
         mustChangePassword: false,
         updatedAt: Timestamp.now(),
       });
+
+      // Update local state so we don't get redirected back
+      clearMustChangePassword();
 
       // Navigate to trucks page
       navigate('/trucks');

@@ -104,6 +104,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const clearMustChangePassword = useCallback(() => {
+    setMustChangePassword(false);
+  }, []);
+
   const value: AuthContextType = {
     user,
     inspector,
@@ -111,6 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     mustChangePassword,
     login,
     logout,
+    clearMustChangePassword,
     isAuthenticated: user !== null && inspector !== null,
   };
 
