@@ -58,8 +58,14 @@ jobs:
           else
             echo "FROM_EMAIL=noreply@yardcheck.app" > functions/.env
           fi
+          if [ -n "$STOCK_PASSWORD" ]; then
+            echo "STOCK_PASSWORD=$STOCK_PASSWORD" >> functions/.env
+          else
+            echo "STOCK_PASSWORD=YardCheck2024!" >> functions/.env
+          fi
         env:
           FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          STOCK_PASSWORD: ${{ secrets.STOCK_PASSWORD }}
 
       - name: Deploy Firebase (Firestore Rules, Storage Rules, Functions)
         run: |
