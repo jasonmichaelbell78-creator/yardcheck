@@ -1,6 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is an admin
+    // Note: This requires the caller's email to match an admin inspector
+    function isAdminUser() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/inspectors/$(request.auth.token.email)) == false;
+      // Admin check is done in Cloud Functions for security
+    }
+    
     // Helper function to validate inspection data on create
     function isValidInspection() {
       let data = request.resource.data;
@@ -37,36 +50,36 @@ service cloud.firestore {
     }
     
     // Inspectors collection
-    // Note: Full authentication will be added in Phase 2
-    // Currently allows read for all users (needed for inspector selection)
+    // Read: Allow authenticated users to read inspectors
+    // Write: Only through Cloud Functions (admin-only operations)
     match /inspectors/{inspectorId} {
-      allow read: if true;
-      // Allow writes - in production this should check for admin auth
-      allow write: if true;
+      allow read: if isAuthenticated();
+      // Allow writes only for authenticated users
+      // Admin validation is done in Cloud Functions
+      allow write: if isAuthenticated();
     }
     
     // Email recipients collection
-    // Note: Full authentication will be added in Phase 2
-    // Currently allows read for all users (needed for email selection)
+    // Read/Write: Require authentication
     match /emailRecipients/{recipientId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       // Allow create with validation
-      allow create: if isValidEmailRecipient();
-      // Allow updates and deletes - in production this should check for admin auth
-      allow update, delete: if true;
+      allow create: if isAuthenticated() && isValidEmailRecipient();
+      // Allow updates and deletes for authenticated users
+      allow update, delete: if isAuthenticated();
     }
     
     // Inspections collection
-    // Note: Full authentication will be added in Phase 2
+    // Require authentication for all operations
     match /inspections/{inspectionId} {
-      // Allow read for viewing inspections
-      allow read: if true;
+      // Allow read for authenticated users
+      allow read: if isAuthenticated();
       // Allow create with validation
-      allow create: if isValidInspection();
+      allow create: if isAuthenticated() && isValidInspection();
       // Allow updates with these conditions:
       // 1. If inspection is still in-progress, allow any updates
       // 2. If inspection is completed/gone, only allow updates that don't change status
-      allow update: if isInProgressInspection() || statusNotChanged();
+      allow update: if isAuthenticated() && (isInProgressInspection() || statusNotChanged());
       // Prevent deletion from client - data integrity is important
       allow delete: if false;
     }

@@ -26,7 +26,7 @@ import { countCompletedItems, formatTimestamp } from '@/utils/validation';
 export function InspectionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentInspector } = useAuth();
+  const { inspector } = useAuth();
   const {
     inspection,
     loading,
@@ -53,17 +53,17 @@ export function InspectionPage() {
 
   // Join as second inspector if not already on the inspection
   useEffect(() => {
-    if (inspection && currentInspector) {
-      const isFirstInspector = inspection.inspector1 === currentInspector.name;
-      const isSecondInspector = inspection.inspector2 === currentInspector.name;
+    if (inspection && inspector) {
+      const isFirstInspector = inspection.inspector1 === inspector.name;
+      const isSecondInspector = inspection.inspector2 === inspector.name;
       
       if (!isFirstInspector && !isSecondInspector && !inspection.inspector2) {
-        joinAsSecondInspector(currentInspector.name);
+        joinAsSecondInspector(inspector.name);
       }
     }
-  }, [inspection, currentInspector, joinAsSecondInspector]);
+  }, [inspection, inspector, joinAsSecondInspector]);
 
-  if (!currentInspector) {
+  if (!inspector) {
     navigate('/');
     return null;
   }
@@ -97,19 +97,19 @@ export function InspectionPage() {
   const isInspectionClosed = inspection.status !== 'in-progress';
 
   const handleValueChange = (section: 'interior' | 'exterior', itemId: string, value: string) => {
-    updateItem(section, itemId, value, currentInspector.name);
+    updateItem(section, itemId, value, inspector.name);
   };
 
   const handleCommentChange = (section: 'interior' | 'exterior', itemId: string, comment: string) => {
-    updateComment(section, itemId, comment, currentInspector.name);
+    updateComment(section, itemId, comment, inspector.name);
   };
 
   const handlePhotoCapture = async (section: 'interior' | 'exterior', itemId: string, file: File) => {
-    await captureItemPhoto(section, itemId, file, currentInspector.name);
+    await captureItemPhoto(section, itemId, file, inspector.name);
   };
 
   const handlePhotoDelete = async (section: 'interior' | 'exterior', itemId: string) => {
-    await deleteItemPhoto(section, itemId, currentInspector.name);
+    await deleteItemPhoto(section, itemId, inspector.name);
   };
 
   const handleDefectsChange = (text: string) => {
@@ -123,7 +123,7 @@ export function InspectionPage() {
   };
 
   const handleAddDefectPhoto = async (file: File, caption?: string) => {
-    await addDefectPhotoToInspection(file, caption, currentInspector.name);
+    await addDefectPhotoToInspection(file, caption, inspector.name);
   };
 
   const handleDeleteDefectPhoto = async (photoUrl: string) => {
