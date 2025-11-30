@@ -295,6 +295,51 @@ async function downloadPhotoAsBase64(url: string): Promise<{ content: string; ty
   }
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+const RATE_LIMIT_MAX_EMAILS = 10; // Maximum emails per window
+
+/**
+ * Check rate limit for email sending
+ * Uses a transaction to prevent race conditions
+ */
+async function checkRateLimit(userId: string): Promise<void> {
+  const rateLimitRef = db.collection('rateLimits').doc(userId);
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  
+  await db.runTransaction(async (transaction) => {
+    const doc = await transaction.get(rateLimitRef);
+    
+    if (doc.exists) {
+      const data = doc.data();
+      const timestamps = data?.emailTimestamps || [];
+      // Filter to only valid numeric timestamps within the window
+      const recentEmails = timestamps
+        .filter((timestamp: unknown): timestamp is number => 
+          typeof timestamp === 'number' && timestamp > windowStart
+        );
+      
+      if (recentEmails.length >= RATE_LIMIT_MAX_EMAILS) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Too many emails sent. Please wait an hour before sending more.'
+        );
+      }
+      
+      // Add current timestamp
+      transaction.update(rateLimitRef, {
+        emailTimestamps: [...recentEmails, now]
+      });
+    } else {
+      // First email from this user
+      transaction.set(rateLimitRef, {
+        emailTimestamps: [now]
+      });
+    }
+  });
+}
+
 /**
  * Cloud Function: Send inspection email via SendGrid
  */
@@ -305,6 +350,22 @@ export const sendInspectionEmail = onCall(
     memory: '256MiB',
   },
   async (request): Promise<SendInspectionEmailResponse> => {
+    // ===== AUTHENTICATION CHECK =====
+    // Step 1: Make sure user is logged in
+    if (!request.auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        'You must be logged in to send emails.'
+      );
+    }
+    
+    // Step 2: Get the user's ID for logging and rate limiting
+    const userId = request.auth.uid;
+    
+    // Step 3: Check rate limit before proceeding
+    await checkRateLimit(userId);
+    // ===== END AUTHENTICATION CHECK =====
+    
     const data = request.data as SendInspectionEmailRequest;
     
     // Validate request
@@ -340,6 +401,9 @@ export const sendInspectionEmail = onCall(
         id: inspectionDoc.id,
         ...inspectionDoc.data(),
       } as Inspection;
+      
+      // Audit log
+      console.log(`[AUDIT] User ${userId} sending email for inspection ${data.inspectionId}`);
       
       // Get the from email address from configuration
       const fromEmail = fromEmailAddress.value();
@@ -531,6 +595,9 @@ export const createInspectorAccount = onCall(
     // Verify the caller is an admin
     await verifyAdminCaller(request.auth?.uid);
     
+    // Audit log
+    console.log(`[AUDIT] Admin ${request.auth?.uid} creating new inspector account: ${data.email}`);
+    
     // Validate request
     if (!data.name || !data.name.trim()) {
       throw new HttpsError('invalid-argument', 'Inspector name is required.');
@@ -622,6 +689,9 @@ export const resetInspectorPassword = onCall(
     
     // Verify the caller is an admin
     await verifyAdminCaller(request.auth?.uid);
+    
+    // Audit log
+    console.log(`[AUDIT] Admin ${request.auth?.uid} resetting password for inspector ${data.inspectorId}`);
     
     // Validate request
     if (!data.inspectorId) {
