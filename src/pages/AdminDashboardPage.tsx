@@ -72,7 +72,7 @@ function isDateInRange(timestamp: { toDate: () => Date } | null, startDate: stri
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { currentInspector, setCurrentInspector } = useAuth();
+  const { inspector, logout } = useAuth();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [allInspectors, setAllInspectors] = useState<Inspector[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,8 +175,8 @@ export function AdminDashboardPage() {
     return { total, completed, inProgress };
   }, [filteredInspections, inspectorFilter]);
 
-  const handleBackToLogin = () => {
-    setCurrentInspector(null);
+  const handleBackToLogin = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -190,7 +190,7 @@ export function AdminDashboardPage() {
     setSelectedInspection(null);
   };
 
-  if (!currentInspector) {
+  if (!inspector) {
     navigate('/');
     return null;
   }
@@ -237,7 +237,7 @@ export function AdminDashboardPage() {
             <div>
               <h1 className="font-bold text-xl">Admin Dashboard</h1>
               <p className="text-sm text-white/80">
-                Welcome, {currentInspector.name}
+                Welcome, {inspector.name}
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">

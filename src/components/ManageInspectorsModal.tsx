@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle, Edit2, Save, X } from 'lucide-react';
+import { UserPlus, UserMinus, UserCheck, Loader2, AlertCircle, Edit2, Save, X, KeyRound } from 'lucide-react';
+import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,12 +12,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   subscribeToAllInspectors,
-  addInspector,
   deactivateInspector,
   reactivateInspector,
   updateInspector,
   MAX_ACTIVE_INSPECTORS,
 } from '@/services/inspectorService';
+import { functions } from '@/config/firebase';
 import type { Inspector } from '@/types';
 
 interface ManageInspectorsModalProps {
@@ -28,6 +29,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   const [inspectors, setInspectors] = useState<Inspector[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Add inspector form
   const [newName, setNewName] = useState('');
@@ -45,9 +47,12 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
+  // Reset password loading state
+  const [resetPasswordLoading, setResetPasswordLoading] = useState<string | null>(null);
+  
   // Confirmation dialog
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'deactivate' | 'reactivate';
+    type: 'deactivate' | 'reactivate' | 'reset-password';
     inspector: Inspector;
   } | null>(null);
 
@@ -68,21 +73,43 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     return () => unsubscribe();
   }, [open]);
 
+  // Clear messages when modal closes
+  useEffect(() => {
+    if (!open) {
+      setError(null);
+      setSuccessMessage(null);
+    }
+  }, [open]);
+
   const activeCount = inspectors.filter(i => i.active).length;
 
   const handleAddInspector = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newEmail.trim()) return;
     
     setAddingInspector(true);
     setError(null);
+    setSuccessMessage(null);
     
     try {
-      await addInspector(newName.trim(), newIsAdmin, newEmail.trim() || undefined);
+      // Call the Cloud Function to create inspector account
+      const createInspectorAccount = httpsCallable<
+        { name: string; email: string; isAdmin: boolean },
+        { success: boolean; message: string; inspectorId: string }
+      >(functions, 'createInspectorAccount');
+      
+      const result = await createInspectorAccount({
+        name: newName.trim(),
+        email: newEmail.trim(),
+        isAdmin: newIsAdmin,
+      });
+      
       setNewName('');
       setNewEmail('');
       setNewIsAdmin(false);
+      setSuccessMessage(result.data.message);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add inspector');
+      const error = err as { message?: string; code?: string };
+      setError(error.message || 'Failed to add inspector');
     } finally {
       setAddingInspector(false);
     }
@@ -100,6 +127,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     
     setSavingEdit(true);
     setError(null);
+    setSuccessMessage(null);
     
     try {
       await updateInspector(editingInspector.id, {
@@ -118,6 +146,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   const handleDeactivate = async (inspector: Inspector) => {
     setActionLoading(inspector.id);
     setError(null);
+    setSuccessMessage(null);
     
     try {
       await deactivateInspector(inspector.id);
@@ -132,6 +161,7 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
   const handleReactivate = async (inspector: Inspector) => {
     setActionLoading(inspector.id);
     setError(null);
+    setSuccessMessage(null);
     
     try {
       await reactivateInspector(inspector.id);
@@ -143,13 +173,40 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
     }
   };
 
+  const handleResetPassword = async (inspector: Inspector) => {
+    setResetPasswordLoading(inspector.id);
+    setError(null);
+    setSuccessMessage(null);
+    
+    try {
+      const resetInspectorPassword = httpsCallable<
+        { inspectorId: string },
+        { success: boolean; message: string }
+      >(functions, 'resetInspectorPassword');
+      
+      const result = await resetInspectorPassword({
+        inspectorId: inspector.id,
+      });
+      
+      setSuccessMessage(result.data.message);
+    } catch (err) {
+      const error = err as { message?: string };
+      setError(error.message || 'Failed to reset password');
+    } finally {
+      setResetPasswordLoading(null);
+      setConfirmAction(null);
+    }
+  };
+
   const confirmAndExecute = () => {
     if (!confirmAction) return;
     
     if (confirmAction.type === 'deactivate') {
       handleDeactivate(confirmAction.inspector);
-    } else {
+    } else if (confirmAction.type === 'reactivate') {
       handleReactivate(confirmAction.inspector);
+    } else if (confirmAction.type === 'reset-password') {
+      handleResetPassword(confirmAction.inspector);
     }
   };
 
@@ -172,30 +229,23 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
             </div>
           )}
 
+          {successMessage && (
+            <div className="flex items-center gap-2 p-3 bg-green-100 text-green-800 rounded-md text-sm">
+              {successMessage}
+            </div>
+          )}
+
           {/* Add Inspector Form */}
           <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
             <h3 className="font-medium text-sm">Add New Inspector</h3>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Inspector name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                disabled={addingInspector}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleAddInspector}
-                disabled={!newName.trim() || addingInspector || activeCount >= MAX_ACTIVE_INSPECTORS}
-              >
-                {addingInspector ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <UserPlus className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
             <Input
-              placeholder="Email (optional, for notifications)"
+              placeholder="Inspector name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              disabled={addingInspector}
+            />
+            <Input
+              placeholder="Email (required for login)"
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
@@ -211,8 +261,28 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
               />
               Is Admin
             </label>
+            <Button
+              onClick={handleAddInspector}
+              disabled={!newName.trim() || !newEmail.trim() || addingInspector || activeCount >= MAX_ACTIVE_INSPECTORS}
+              className="w-full"
+            >
+              {addingInspector ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Inspector
+                </>
+              )}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Active inspectors: {activeCount}/{MAX_ACTIVE_INSPECTORS}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              New inspectors will use the stock password and must change it on first login.
             </p>
           </div>
 
@@ -242,21 +312,39 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
                           <p className="text-xs text-muted-foreground">
                             {inspector.isAdmin ? 'Admin' : 'Inspector'}
                             {inspector.email && ` • ${inspector.email}`}
+                            {inspector.mustChangePassword && (
+                              <span className="ml-2 text-yellow-600">(Password change required)</span>
+                            )}
                           </p>
                         </div>
-                        <div className="flex gap-1 ml-2">
+                        <div className="flex gap-1 ml-2 flex-wrap justify-end">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStartEdit(inspector)}
+                            title="Edit inspector"
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => setConfirmAction({ type: 'reset-password', inspector })}
+                            disabled={resetPasswordLoading === inspector.id || !inspector.email}
+                            title="Reset password"
+                          >
+                            {resetPasswordLoading === inspector.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <KeyRound className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => setConfirmAction({ type: 'deactivate', inspector })}
                             disabled={actionLoading === inspector.id}
+                            title="Deactivate inspector"
                           >
                             {actionLoading === inspector.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -391,16 +479,32 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {confirmAction?.type === 'deactivate' ? 'Deactivate' : 'Reactivate'} Inspector
+              {confirmAction?.type === 'deactivate' && 'Deactivate Inspector'}
+              {confirmAction?.type === 'reactivate' && 'Reactivate Inspector'}
+              {confirmAction?.type === 'reset-password' && 'Reset Password'}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to {confirmAction?.type === 'deactivate' ? 'deactivate' : 'reactivate'}{' '}
-            <strong>{confirmAction?.inspector.name}</strong>?
             {confirmAction?.type === 'deactivate' && (
-              <span className="block mt-2">
-                They will no longer be able to log in or perform inspections.
-              </span>
+              <>
+                Are you sure you want to deactivate <strong>{confirmAction?.inspector.name}</strong>?
+                <span className="block mt-2">
+                  They will no longer be able to log in or perform inspections.
+                </span>
+              </>
+            )}
+            {confirmAction?.type === 'reactivate' && (
+              <>
+                Are you sure you want to reactivate <strong>{confirmAction?.inspector.name}</strong>?
+              </>
+            )}
+            {confirmAction?.type === 'reset-password' && (
+              <>
+                Are you sure you want to reset the password for <strong>{confirmAction?.inspector.name}</strong>?
+                <span className="block mt-2">
+                  Their password will be reset to the default and they will need to change it on next login.
+                </span>
+              </>
             )}
           </p>
           <DialogFooter className="flex-row gap-2 sm:flex-row">
@@ -412,7 +516,9 @@ export function ManageInspectorsModal({ open, onClose }: ManageInspectorsModalPr
               onClick={confirmAndExecute}
               className="flex-1"
             >
-              {confirmAction?.type === 'deactivate' ? 'Deactivate' : 'Reactivate'}
+              {confirmAction?.type === 'deactivate' && 'Deactivate'}
+              {confirmAction?.type === 'reactivate' && 'Reactivate'}
+              {confirmAction?.type === 'reset-password' && 'Reset Password'}
             </Button>
           </DialogFooter>
         </DialogContent>

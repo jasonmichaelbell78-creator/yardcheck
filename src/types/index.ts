@@ -4,9 +4,10 @@ import { Timestamp } from 'firebase/firestore';
 export interface Inspector {
   id: string;
   name: string;
-  email?: string;
+  email: string;           // Required for login
   isAdmin: boolean;
   active: boolean;
+  mustChangePassword: boolean;  // True = force password change on next login
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -95,8 +96,12 @@ export interface ChecklistSectionConfig {
 
 // Auth context types
 export interface AuthContextType {
-  currentInspector: Inspector | null;
-  setCurrentInspector: (inspector: Inspector | null) => void;
+  user: import('firebase/auth').User | null;
+  inspector: Inspector | null;
+  loading: boolean;
+  mustChangePassword: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
