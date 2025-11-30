@@ -48,12 +48,11 @@ service cloud.firestore {
       // Anyone logged in can read (to see inspector list)
       allow read: if isSignedIn();
       
-      // Users can update their OWN record, but ONLY the mustChangePassword field
-      allow update: if isOwner() && isPasswordChangeUpdate();
+      // Users can update their OWN record (ONLY mustChangePassword field), or admins can update any field
+      allow update: if isAdmin() || (isOwner() && isPasswordChangeUpdate());
       
-      // Admins can do anything (create, update all fields, delete)
+      // Admins can create and delete
       allow create, delete: if isAdmin();
-      allow update: if isAdmin();
     }
     
     // EMAIL RECIPIENTS COLLECTION
