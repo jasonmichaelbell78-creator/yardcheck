@@ -1,79 +1,69 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is authenticated
-    function isAuthenticated() {
+    
+    // Helper: Check if user is logged in
+    function isSignedIn() {
       return request.auth != null;
     }
     
-    // Helper function to validate inspection data on create
+    // Helper: Check if user is an admin
+    function isAdmin() {
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/inspectors/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Helper: Check if inspection can still be edited (ONLY in-progress)
+    function isEditable() {
+      return resource.data.status == 'in-progress';
+    }
+    
+    // Helper: Validate inspection data
     function isValidInspection() {
       let data = request.resource.data;
       return data.truckNumber is string
         && data.truckNumber.size() > 0
         && data.truckNumber.size() <= 50
-        // Truck number must be alphanumeric, dashes, or spaces (validated client-side with regex)
-        && data.truckNumber.matches('^[A-Z0-9\\-\\s]+$')
         && data.status in ['in-progress', 'complete', 'gone']
         && data.inspector1 is string
         && data.inspector1.size() > 0;
     }
     
-    // Helper function to check if inspection is still editable
-    function isInProgressInspection() {
-      return resource.data.status == 'in-progress';
-    }
-    
-    // Helper function to check if status change is prevented
-    // Once completed/gone, status cannot be changed
-    function statusNotChanged() {
-      return request.resource.data.status == resource.data.status;
-    }
-    
-    // Helper function to validate email recipient data
-    function isValidEmailRecipient() {
-      let data = request.resource.data;
-      return data.name is string
-        && data.name.size() > 0
-        && data.name.size() <= 100
-        && data.email is string
-        && data.email.size() > 0
-        && data.email.size() <= 254;
-    }
-    
-    // Inspectors collection
-    // Read: Allow authenticated users to read inspectors
-    // Write: Only through Cloud Functions (admin-only operations)
+    // INSPECTORS COLLECTION
+    // Anyone logged in can read (to see inspector list)
+    // Only admins can add/edit/delete inspectors
     match /inspectors/{inspectorId} {
-      allow read: if isAuthenticated();
-      // Allow writes only for authenticated users
-      // Admin validation is done in Cloud Functions
-      allow write: if isAuthenticated();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
-    // Email recipients collection
-    // Read/Write: Require authentication
+    // EMAIL RECIPIENTS COLLECTION
+    // Anyone logged in can read
+    // Only admins can add/edit/delete
     match /emailRecipients/{recipientId} {
-      allow read: if isAuthenticated();
-      // Allow create with validation
-      allow create: if isAuthenticated() && isValidEmailRecipient();
-      // Allow updates and deletes for authenticated users
-      allow update, delete: if isAuthenticated();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
-    // Inspections collection
-    // Require authentication for all operations
+    // INSPECTIONS COLLECTION
     match /inspections/{inspectionId} {
-      // Allow read for authenticated users
-      allow read: if isAuthenticated();
-      // Allow create with validation
-      allow create: if isAuthenticated() && isValidInspection();
-      // Allow updates with these conditions:
-      // 1. If inspection is still in-progress, allow any updates
-      // 2. If inspection is completed/gone, only allow updates that don't change status
-      allow update: if isAuthenticated() && (isInProgressInspection() || statusNotChanged());
-      // Prevent deletion from client - data integrity is important
+      // Anyone logged in can read inspections
+      allow read: if isSignedIn();
+      
+      // Create: Must be logged in and data must be valid
+      allow create: if isSignedIn() && isValidInspection();
+      
+      // Update: ONLY if inspection is still "in-progress"
+      // This fixes the bug where completed inspections could be edited!
+      allow update: if isSignedIn() && isEditable();
+      
+      // Delete: Never allowed from client
       allow delete: if false;
+    }
+    
+    // RATE LIMITS COLLECTION (for Cloud Function rate limiting)
+    match /rateLimits/{docId} {
+      allow read, write: if false; // Only accessible by Cloud Functions
     }
   }
 }
