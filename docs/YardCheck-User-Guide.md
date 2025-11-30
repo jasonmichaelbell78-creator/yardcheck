@@ -62,8 +62,20 @@ The YardCheck icon will now appear in your app drawer and home screen.
 ### Logging In
 
 1. Open YardCheck in your browser or from your home screen
-2. Under **"Inspector Login"**, select your name from the dropdown
-3. Tap **"Start Inspection"**
+2. Enter your **email address** and **password**
+3. Tap **"Sign In"**
+4. You'll be automatically taken to the Truck Entry page
+
+### First-Time Login
+
+When logging in for the first time (or after an admin resets your password):
+
+1. Enter your email and the temporary password provided by your admin
+2. You'll be prompted to **change your password**
+3. Enter a new password (minimum 8 characters)
+4. Confirm your new password
+5. Tap **"Change Password"**
+6. You'll be automatically redirected to start working
 
 ### Starting a New Inspection
 
@@ -127,9 +139,28 @@ YardCheck continues to work even without an internet connection:
 
 ### Accessing the Admin Dashboard
 
-1. Open YardCheck and scroll to **"Admin Access"**
-2. Select your admin name from the dropdown
-3. Tap **"Open Dashboard"**
+1. Open YardCheck in your browser or from your home screen
+2. Enter your **email address** and **password**
+3. Tap **"Sign In"**
+4. As an admin, you'll be automatically redirected to the **Admin Dashboard**
+
+### Navigating Between Dashboard and Inspections
+
+- **From Admin Dashboard to Truck Entry:** Click the **"Start Inspection"** button in the header
+- **From Truck Entry back to Dashboard:** Click the **"Admin"** button in the header (only visible to admins)
+
+### Managing Inspector Passwords
+
+When you create a new inspector:
+1. They are assigned a temporary password: `YardCheck2024!`
+2. The `mustChangePassword` flag is set to `true`
+3. On their first login, they'll be forced to change their password
+
+To reset an inspector's password:
+1. Go to **Firebase Console → Authentication**
+2. Find the user and reset their password
+3. Update the `mustChangePassword` flag to `true` in Firestore
+4. Provide them with the new temporary password
 
 ### Understanding the Stats Cards
 
@@ -237,7 +268,7 @@ Access inspector management by clicking **"Manage Inspectors"** in the header.
 
 | Issue | Solution |
 |-------|----------|
-| **Can't see my name in dropdown** | Contact an admin to add or reactivate your account |
+| **Can't log in** | Check your email and password; contact an admin if you need a password reset |
 | **Changes not saving** | Check connection status; data saves locally and syncs when connected |
 | **App not loading** | Try refreshing the page or clearing browser cache |
 | **PDF not downloading** | Check popup blockers; try a different browser |
@@ -311,6 +342,15 @@ YardCheck is designed to work offline:
 | ⚪ Gray Badge | Gone |
 | 🟢 Green Dot | Connected |
 | 🟡 Yellow Dot | Offline/Syncing |
+
+---
+
+## Security Notes
+
+- **Passwords:** Must be at least 8 characters long
+- **Session:** You'll stay logged in until you explicitly log out
+- **First Login:** All new accounts require a password change on first login
+- **Logout:** Tap the logout icon in the header to sign out
 
 ---
 
