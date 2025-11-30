@@ -28,7 +28,7 @@ Replace the insecure dropdown-based login with proper email/password authenticat
 | User Guide Update | Document new authentication flow | #52 |
 
 ### Technical Details
-- Inspectors are created in Firebase Auth with temporary password: `YardCheck2024!`
+- Inspectors are created in Firebase Auth with a temporary password (set by admin)
 - `mustChangePassword` flag in Firestore forces password change on first login
 - Firestore rules allow users to update only their own `mustChangePassword` field
 - Admins retain full control over all inspector documents
