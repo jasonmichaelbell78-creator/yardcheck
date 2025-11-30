@@ -102,6 +102,7 @@ export interface AuthContextType {
   mustChangePassword: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  clearMustChangePassword: () => void;
   isAuthenticated: boolean;
 }
 
