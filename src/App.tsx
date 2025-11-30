@@ -59,7 +59,7 @@ function PasswordChangeRoute({ children }: { children: React.ReactNode }) {
 
 // Public route - redirects to trucks if already authenticated
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, mustChangePassword } = useAuth();
+  const { isAuthenticated, loading, mustChangePassword, inspector } = useAuth();
   
   if (loading) {
     return <LoadingScreen />;
@@ -68,6 +68,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (isAuthenticated) {
     if (mustChangePassword) {
       return <Navigate to="/change-password" replace />;
+    }
+    // Redirect admins to admin dashboard, others to trucks
+    if (inspector?.isAdmin) {
+      return <Navigate to="/admin" replace />;
     }
     return <Navigate to="/trucks" replace />;
   }

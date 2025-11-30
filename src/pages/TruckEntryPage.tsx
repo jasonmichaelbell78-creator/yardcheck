@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Truck, Plus, Clock, Users, LogOut, History, Search, Calendar, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -219,6 +219,17 @@ export function TruckEntryPage() {
           </div>
           <div className="flex items-center gap-2">
             <ConnectionStatus />
+            {inspector?.isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

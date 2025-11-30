@@ -53,8 +53,12 @@ export function ChangePasswordPage() {
       // Update local state so we don't get redirected back
       clearMustChangePassword();
 
-      // Navigate to trucks page
-      navigate('/trucks');
+      // Navigate based on admin status
+      if (inspector?.isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/trucks');
+      }
     } catch (err) {
       const firebaseError = err as { code?: string; message?: string };
       switch (firebaseError.code) {
