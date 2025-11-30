@@ -295,24 +295,32 @@ async function downloadPhotoAsBase64(url: string): Promise<{ content: string; ty
   }
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+const RATE_LIMIT_MAX_EMAILS = 10; // Maximum emails per window
+
 /**
- * Check rate limit for email sending (10 emails per hour per user)
+ * Check rate limit for email sending
  * Uses a transaction to prevent race conditions
  */
 async function checkRateLimit(userId: string): Promise<void> {
   const rateLimitRef = db.collection('rateLimits').doc(userId);
   const now = Date.now();
-  const oneHourAgo = now - (60 * 60 * 1000); // 1 hour in milliseconds
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
   
   await db.runTransaction(async (transaction) => {
     const doc = await transaction.get(rateLimitRef);
     
     if (doc.exists) {
       const data = doc.data();
-      const recentEmails = (data?.emailTimestamps || [])
-        .filter((timestamp: number) => timestamp > oneHourAgo);
+      const timestamps = data?.emailTimestamps || [];
+      // Filter to only valid numeric timestamps within the window
+      const recentEmails = timestamps
+        .filter((timestamp: unknown): timestamp is number => 
+          typeof timestamp === 'number' && timestamp > windowStart
+        );
       
-      if (recentEmails.length >= 10) {
+      if (recentEmails.length >= RATE_LIMIT_MAX_EMAILS) {
         throw new HttpsError(
           'resource-exhausted',
           'Too many emails sent. Please wait an hour before sending more.'
