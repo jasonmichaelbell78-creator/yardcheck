@@ -23,7 +23,7 @@ import type { EmailRecipient } from '@/types';
 
 export function AdminEmailRecipientsPage() {
   const navigate = useNavigate();
-  const { currentInspector } = useAuth();
+  const { inspector } = useAuth();
   const [recipients, setRecipients] = useState<EmailRecipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +116,7 @@ export function AdminEmailRecipientsPage() {
     }
   };
 
-  if (!currentInspector) {
+  if (!inspector) {
     navigate('/');
     return null;
   }

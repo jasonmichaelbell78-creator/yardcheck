@@ -451,3 +451,235 @@ export const sendInspectionEmail = onCall(
     }
   }
 );
+
+// Stock password for new accounts - configurable via environment
+// This password is intentionally simple and known because:
+// 1. Users MUST change it on first login (mustChangePassword flag is set)
+// 2. It's only used for initial account setup
+// 3. Can be overridden via Firebase environment config if needed
+const stockPassword = defineString('STOCK_PASSWORD', { default: 'YardCheck2024!' });
+
+// Types for auth management
+interface CreateInspectorAccountRequest {
+  name: string;
+  email: string;
+  isAdmin: boolean;
+}
+
+interface CreateInspectorAccountResponse {
+  success: boolean;
+  inspectorId: string;
+  message: string;
+}
+
+interface ResetInspectorPasswordRequest {
+  inspectorId: string;
+}
+
+interface ResetInspectorPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Helper function to check if the caller is an admin
+ */
+async function verifyAdminCaller(callerUid: string | undefined): Promise<void> {
+  if (!callerUid) {
+    throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
+  }
+  
+  // Get the caller's email from Firebase Auth
+  const callerRecord = await admin.auth().getUser(callerUid);
+  const callerEmail = callerRecord.email?.toLowerCase();
+  
+  if (!callerEmail) {
+    throw new HttpsError('permission-denied', 'Could not verify your admin status.');
+  }
+  
+  // Find the inspector document by email
+  const inspectorQuery = await db.collection('inspectors')
+    .where('email', '==', callerEmail)
+    .where('active', '==', true)
+    .limit(1)
+    .get();
+  
+  if (inspectorQuery.empty) {
+    throw new HttpsError('permission-denied', 'You are not registered as an inspector.');
+  }
+  
+  const inspectorDoc = inspectorQuery.docs[0];
+  const inspectorData = inspectorDoc.data();
+  
+  if (!inspectorData.isAdmin) {
+    throw new HttpsError('permission-denied', 'Only admins can perform this action.');
+  }
+}
+
+/**
+ * Cloud Function: Create a new inspector account
+ * Creates a Firebase Auth user and Firestore document
+ */
+export const createInspectorAccount = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (request): Promise<CreateInspectorAccountResponse> => {
+    const data = request.data as CreateInspectorAccountRequest;
+    
+    // Verify the caller is an admin
+    await verifyAdminCaller(request.auth?.uid);
+    
+    // Validate request
+    if (!data.name || !data.name.trim()) {
+      throw new HttpsError('invalid-argument', 'Inspector name is required.');
+    }
+    
+    if (!data.email || !data.email.trim()) {
+      throw new HttpsError('invalid-argument', 'Email is required.');
+    }
+    
+    const email = data.email.trim().toLowerCase();
+    const name = data.name.trim();
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new HttpsError('invalid-argument', 'Invalid email format.');
+    }
+    
+    try {
+      // Check if an inspector with this email already exists in Firestore
+      const existingInspector = await db.collection('inspectors')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+      
+      if (!existingInspector.empty) {
+        throw new HttpsError('already-exists', 'An inspector with this email already exists.');
+      }
+      
+      // Create Firebase Auth user
+      try {
+        await admin.auth().createUser({
+          email: email,
+          password: stockPassword.value(),
+          displayName: name,
+        });
+      } catch (authError) {
+        const error = authError as { code?: string };
+        if (error.code === 'auth/email-already-exists') {
+          throw new HttpsError('already-exists', 'An account with this email already exists.');
+        }
+        throw authError;
+      }
+      
+      // Create Firestore document
+      const now = admin.firestore.Timestamp.now();
+      const inspectorData = {
+        name: name,
+        email: email,
+        isAdmin: data.isAdmin ?? false,
+        active: true,
+        mustChangePassword: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      const docRef = await db.collection('inspectors').add(inspectorData);
+      
+      return {
+        success: true,
+        inspectorId: docRef.id,
+        message: `Inspector ${name} created successfully. They will need to change their password on first login.`,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      
+      console.error('Error creating inspector account:', error);
+      throw new HttpsError(
+        'internal',
+        'Failed to create inspector account. Please try again.'
+      );
+    }
+  }
+);
+
+/**
+ * Cloud Function: Reset an inspector's password
+ * Resets password to stock password and sets mustChangePassword flag
+ */
+export const resetInspectorPassword = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (request): Promise<ResetInspectorPasswordResponse> => {
+    const data = request.data as ResetInspectorPasswordRequest;
+    
+    // Verify the caller is an admin
+    await verifyAdminCaller(request.auth?.uid);
+    
+    // Validate request
+    if (!data.inspectorId) {
+      throw new HttpsError('invalid-argument', 'Inspector ID is required.');
+    }
+    
+    try {
+      // Get the inspector document
+      const inspectorDoc = await db.collection('inspectors').doc(data.inspectorId).get();
+      
+      if (!inspectorDoc.exists) {
+        throw new HttpsError('not-found', 'Inspector not found.');
+      }
+      
+      const inspectorData = inspectorDoc.data();
+      if (!inspectorData?.email) {
+        throw new HttpsError('failed-precondition', 'Inspector does not have an email address.');
+      }
+      
+      const email = inspectorData.email.toLowerCase();
+      
+      // Find the Firebase Auth user by email
+      let userRecord: admin.auth.UserRecord;
+      try {
+        userRecord = await admin.auth().getUserByEmail(email);
+      } catch (authError) {
+        const error = authError as { code?: string };
+        if (error.code === 'auth/user-not-found') {
+          throw new HttpsError('not-found', 'No authentication account found for this inspector.');
+        }
+        throw authError;
+      }
+      
+      // Reset the password
+      await admin.auth().updateUser(userRecord.uid, {
+        password: stockPassword.value(),
+      });
+      
+      // Update the mustChangePassword flag in Firestore
+      await db.collection('inspectors').doc(data.inspectorId).update({
+        mustChangePassword: true,
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+      
+      return {
+        success: true,
+        message: `Password reset successfully. ${inspectorData.name} will need to change their password on next login.`,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      
+      console.error('Error resetting inspector password:', error);
+      throw new HttpsError(
+        'internal',
+        'Failed to reset password. Please try again.'
+      );
+    }
+  }
+);

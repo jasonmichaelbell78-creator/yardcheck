@@ -1,5 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
 
 // Firebase configuration using environment variables
 const firebaseConfig = {
@@ -21,5 +23,11 @@ export const db = initializeFirestore(app, {
     tabManager: persistentMultipleTabManager()
   })
 });
+
+// Initialize Firebase Auth
+export const auth = getAuth(app);
+
+// Initialize Firebase Functions
+export const functions = getFunctions(app);
 
 export default app;

@@ -1,50 +1,34 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Truck, Shield, HelpCircle } from 'lucide-react';
+import { Truck, HelpCircle, Loader2, Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInspectors } from '@/hooks/useInspectors';
 
 export function LoginPage() {
-  const navigate = useNavigate();
-  const { setCurrentInspector } = useAuth();
-  const { inspectors, adminInspectors, loading, error } = useInspectors();
-  const [selectedInspectorId, setSelectedInspectorId] = useState('');
-  const [selectedAdminId, setSelectedAdminId] = useState('');
+  const { login, loading: authLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleStartInspection = () => {
-    const inspector = inspectors.find(i => i.id === selectedInspectorId);
-    if (inspector) {
-      setCurrentInspector(inspector);
-      navigate('/trucks');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await login(email, password);
+      // Navigation will be handled by App.tsx based on mustChangePassword flag
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleOpenDashboard = () => {
-    const admin = adminInspectors.find(i => i.id === selectedAdminId);
-    if (admin) {
-      setCurrentInspector(admin);
-      navigate('/admin');
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center text-destructive">{error}</p>
-            <Button className="w-full mt-4" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isLoading = loading || authLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/10 to-background p-4">
@@ -63,74 +47,79 @@ export function LoginPage() {
           <ConnectionStatus />
         </div>
 
-        {/* Inspector Login */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="w-5 h-5" />
-              Inspector Login
-            </CardTitle>
-            <CardDescription>
-              Select your name to start inspecting trucks
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Select
-              value={selectedInspectorId}
-              onChange={(e) => setSelectedInspectorId(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Select Inspector...</option>
-              {inspectors.map((inspector) => (
-                <option key={inspector.id} value={inspector.id}>
-                  {inspector.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleStartInspection}
-              disabled={!selectedInspectorId || loading}
-            >
-              Start Inspection
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Admin Login */}
+        {/* Login Form */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Admin Access
+              <Lock className="w-5 h-5" />
+              Login
             </CardTitle>
             <CardDescription>
-              Admin users can access the dashboard
+              Enter your credentials to access the system
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Select
-              value={selectedAdminId}
-              onChange={(e) => setSelectedAdminId(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Select Admin...</option>
-              {adminInspectors.map((admin) => (
-                <option key={admin.id} value={admin.id}>
-                  {admin.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              className="w-full"
-              size="lg"
-              variant="secondary"
-              onClick={handleOpenDashboard}
-              disabled={!selectedAdminId || loading}
-            >
-              Open Dashboard
-            </Button>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    required
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    required
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isLoading || !email || !password}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Logging in...
+                  </>
+                ) : (
+                  'Login'
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
@@ -146,13 +135,6 @@ export function LoginPage() {
             User Guide
           </Button>
         </div>
-
-        {/* Loading state */}
-        {loading && (
-          <p className="text-center text-muted-foreground mt-4">
-            Loading inspectors...
-          </p>
-        )}
       </div>
     </div>
   );

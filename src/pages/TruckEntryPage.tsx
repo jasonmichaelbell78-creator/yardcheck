@@ -26,7 +26,7 @@ function getDefaultDates() {
 export function TruckEntryPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentInspector, setCurrentInspector } = useAuth();
+  const { inspector, logout } = useAuth();
   const { inspections, loading } = useInProgressInspections();
   const [truckNumber, setTruckNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +48,7 @@ export function TruckEntryPage() {
   const lastLoadedInspectorRef = useRef<string | null>(null);
 
   const loadHistory = useCallback(async () => {
-    if (!currentInspector) return;
+    if (!inspector) return;
     
     setHistoryLoading(true);
     setHistoryError(null);
@@ -58,7 +58,7 @@ export function TruckEntryPage() {
       const endDate = historyEndDate ? new Date(historyEndDate) : undefined;
       
       const results = await getInspectorInspections(
-        currentInspector.name,
+        inspector.name,
         startDate,
         endDate
       );
@@ -69,12 +69,12 @@ export function TruckEntryPage() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [currentInspector, historyStartDate, historyEndDate]);
+  }, [inspector, historyStartDate, historyEndDate]);
 
   // Load history when section is opened for the first time or when inspector changes
   useEffect(() => {
-    if (showHistory && currentInspector) {
-      const inspectorName = currentInspector.name;
+    if (showHistory && inspector) {
+      const inspectorName = inspector.name;
       const shouldReload = lastLoadedInspectorRef.current !== inspectorName;
       
       // Set default dates and load on first open or when inspector changes
@@ -113,19 +113,19 @@ export function TruckEntryPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showHistory, currentInspector?.name]);
+  }, [showHistory, inspector?.name]);
 
   // Refresh history when returning from a completed inspection
   useEffect(() => {
     const state = location.state as { refreshHistory?: boolean } | null;
-    if (state?.refreshHistory && currentInspector) {
+    if (state?.refreshHistory && inspector) {
       // Auto-expand history section and reload
       setShowHistory(true);
       loadHistory();
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, currentInspector, loadHistory, navigate, location.pathname]);
+  }, [location.state, inspector, loadHistory, navigate, location.pathname]);
 
   // Filter history inspections by truck number
   const filteredHistoryInspections = useMemo(() => {
@@ -146,7 +146,7 @@ export function TruckEntryPage() {
   };
 
   const handleBeginInspection = async () => {
-    if (!currentInspector) return;
+    if (!inspector) return;
     
     const normalizedTruckNumber = normalizeTruckNumber(truckNumber);
     
@@ -165,9 +165,9 @@ export function TruckEntryPage() {
       
       if (existingInspection) {
         // Join the existing inspection instead of creating a new one
-        if (existingInspection.inspector1 !== currentInspector.name &&
-            existingInspection.inspector2 !== currentInspector.name) {
-          await addSecondInspector(existingInspection.id, currentInspector.name);
+        if (existingInspection.inspector1 !== inspector.name &&
+            existingInspection.inspector2 !== inspector.name) {
+          await addSecondInspector(existingInspection.id, inspector.name);
         }
         setJoinMessage(`Joining existing inspection for truck #${normalizedTruckNumber}`);
         // Small delay to show the message before navigating
@@ -180,7 +180,7 @@ export function TruckEntryPage() {
       // No existing inspection, create a new one
       const inspectionId = await createInspection(
         normalizedTruckNumber,
-        currentInspector.name
+        inspector.name
       );
       navigate(`/inspection/${inspectionId}`);
     } catch (err) {
@@ -195,12 +195,12 @@ export function TruckEntryPage() {
     navigate(`/inspection/${inspectionId}`);
   };
 
-  const handleLogout = () => {
-    setCurrentInspector(null);
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
-  if (!currentInspector) {
+  if (!inspector) {
     navigate('/');
     return null;
   }
@@ -214,7 +214,7 @@ export function TruckEntryPage() {
             <Truck className="w-6 h-6" />
             <div>
               <h1 className="font-bold">YardCheck</h1>
-              <p className="text-sm text-white/80">{currentInspector.name}</p>
+              <p className="text-sm text-white/80">{inspector.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
