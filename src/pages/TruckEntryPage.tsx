@@ -224,7 +224,7 @@ export function TruckEntryPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/admin')}
-                className="text-white border-white/20 hover:bg-white/10"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
                 <Shield className="w-4 h-4 mr-2" />
                 Admin
