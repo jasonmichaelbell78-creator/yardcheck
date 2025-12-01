@@ -128,7 +128,7 @@ export function LoginPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.open('/YardCheck-User-Guide.pdf', '_blank')}
+            onClick={() => window.open('https://github.com/jasonmichaelbell78-creator/yardcheck/blob/main/docs/YardCheck-User-Guide.md', '_blank')}
             className="text-muted-foreground hover:text-primary"
           >
             <HelpCircle className="w-4 h-4 mr-1" />
